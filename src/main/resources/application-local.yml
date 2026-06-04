@@ -1,0 +1,24 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/naknak
+    username: naknak
+    password: naknak
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+jwt:
+  secret: local-dev-secret-key-must-be-at-least-256-bits-long-so-add-more-text
+
+kakao:
+  client-id: local-kakao-client-id
+  client-secret: local-kakao-client-secret
