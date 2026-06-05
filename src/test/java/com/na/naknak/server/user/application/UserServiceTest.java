@@ -76,4 +76,13 @@ class UserServiceTest {
         assertThat(response.email()).isEqualTo("new@test.com");
         assertThat(response.nickname()).isEqualTo("신규유저");
     }
+
+    @Test
+    void 유효하지_않은_초대코드_회원가입_예외() {}
+
+    @Test
+    void 닉네임_중복_회원가입_예외() {}
+
+    @Test
+    void 정상_회원가입_토큰_반환() {}
 }
