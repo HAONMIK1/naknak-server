@@ -1,4 +1,4 @@
-package com.na.naknak.server.user.infrastructure.kakao;
+package com.na.naknak.server.user.kakao;
 
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
