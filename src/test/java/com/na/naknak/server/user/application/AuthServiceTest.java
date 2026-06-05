@@ -64,7 +64,6 @@ class AuthServiceTest {
     @Test
     void 로그아웃_성공() {
         // given
-        given(jwtProvider.validate("access-token")).willReturn(true);
         given(jwtProvider.getExpiration("access-token")).willReturn(900L);
 
         // when
