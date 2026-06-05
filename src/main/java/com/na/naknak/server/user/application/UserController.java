@@ -4,6 +4,7 @@ import com.na.naknak.server.common.ApiResponse;
 import com.na.naknak.server.user.application.UserService;
 import com.na.naknak.server.user.presentation.dto.LoginRequest;
 import com.na.naknak.server.user.presentation.dto.LoginResponse;
+import com.na.naknak.server.user.presentation.dto.SignupRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -25,5 +26,15 @@ public class UserController {
         LoginResponse response = userService.login(request.kakaoAccessToken());
         HttpStatus status = "NEED_SIGNUP".equals(response.status()) ? HttpStatus.CREATED : HttpStatus.OK;
         return ResponseEntity.status(status).body(ApiResponse.ok(response));
+    }
+
+    @PostMapping("/signup")
+    public ResponseEntity<ApiResponse<LoginResponse>> signup(@Valid @RequestBody SignupRequest request) {
+        LoginResponse response = userService.signup(
+                request.kakaoAccessToken(),
+                request.inviteCode(),
+                request.nickname()
+        );
+        return ResponseEntity.ok(ApiResponse.ok(response));
     }
 }
