@@ -18,6 +18,8 @@ spring:
 
 jwt:
   secret: local-dev-secret-key-must-be-at-least-256-bits-long-so-add-more-text
+  access-token-expiry: 900
+  refresh-token-expiry: 1209600
 
 kakao:
   client-id: local-kakao-client-id
