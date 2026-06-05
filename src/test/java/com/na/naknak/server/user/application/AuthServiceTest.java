@@ -2,6 +2,7 @@ package com.na.naknak.server.user.application;
 
 import com.na.naknak.server.common.exception.BusinessException;
 import com.na.naknak.server.common.security.JwtProvider;
+import com.na.naknak.server.user.infrastructure.redis.BlacklistRepository;
 import com.na.naknak.server.user.infrastructure.redis.RefreshTokenRepository;
 import com.na.naknak.server.user.presentation.dto.TokenResponse;
 import org.junit.jupiter.api.Test;
@@ -21,8 +22,12 @@ class AuthServiceTest {
     @InjectMocks
     private AuthService authService;
 
-    @Mock private JwtProvider jwtProvider;
-    @Mock private RefreshTokenRepository refreshTokenRepository;
+    @Mock
+    private JwtProvider jwtProvider;
+    @Mock
+    private RefreshTokenRepository refreshTokenRepository;
+    @Mock
+    private BlacklistRepository blacklistRepository;
 
     @Test
     void 유효한_리프레시_토큰_재발급_성공() {
@@ -57,5 +62,16 @@ class AuthServiceTest {
     }
 
     @Test
-    void 로그아웃_성공() {}
+    void 로그아웃_성공() {
+        // given
+        given(jwtProvider.validate("access-token")).willReturn(true);
+        given(jwtProvider.getExpiration("access-token")).willReturn(900L);
+
+        // when
+        authService.logout(1L, "access-token");
+
+        // then
+        verify(refreshTokenRepository).delete(1L);
+        verify(blacklistRepository).save("access-token", 900L);
+    }
 }
