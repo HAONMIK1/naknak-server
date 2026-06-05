@@ -3,6 +3,7 @@ package com.na.naknak.server.user.application;
 import com.na.naknak.server.common.exception.BusinessException;
 import com.na.naknak.server.common.exception.ErrorCode;
 import com.na.naknak.server.common.security.JwtProvider;
+import com.na.naknak.server.user.infrastructure.redis.BlacklistRepository;
 import com.na.naknak.server.user.infrastructure.redis.RefreshTokenRepository;
 import com.na.naknak.server.user.presentation.dto.TokenResponse;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +15,7 @@ public class AuthService {
 
     private final JwtProvider jwtProvider;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final BlacklistRepository blacklistRepository;
 
     public TokenResponse refresh(String refreshToken) {
         if (!jwtProvider.validate(refreshToken)) {
@@ -34,5 +36,14 @@ public class AuthService {
         refreshTokenRepository.save(userId, newRefreshToken);
 
         return new TokenResponse(newAccessToken, newRefreshToken);
+    }
+
+
+    public void logout(Long userId, String accessToken) {
+        refreshTokenRepository.delete(userId);
+        long ttl = jwtProvider.getExpiration(accessToken);
+        if (ttl > 0) {
+            blacklistRepository.save(accessToken, ttl);
+        }
     }
 }

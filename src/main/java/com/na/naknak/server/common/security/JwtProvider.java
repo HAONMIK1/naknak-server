@@ -66,4 +66,9 @@ public class JwtProvider {
                 .parseSignedClaims(token)
                 .getPayload();
     }
+
+    public long getExpiration(String token) {
+        Date expiration = parseClaims(token).getExpiration();
+        return (expiration.getTime() - System.currentTimeMillis()) / 1000;
+    }
 }
