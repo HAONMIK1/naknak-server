@@ -47,6 +47,9 @@ dependencies {
 	implementation("org.flywaydb:flyway-core")
 	runtimeOnly("org.flywaydb:flyway-database-postgresql")
 
+	// Logging
+	implementation("net.logstash.logback:logstash-logback-encoder:7.4")
+
 	compileOnly("org.projectlombok:lombok")
 	annotationProcessor("org.projectlombok:lombok")
 
