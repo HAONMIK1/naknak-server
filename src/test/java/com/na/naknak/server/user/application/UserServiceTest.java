@@ -138,4 +138,10 @@ class UserServiceTest {
         assertThat(response.status()).isEqualTo("AUTHENTICATED");
         assertThat(response.accessToken()).isEqualTo("access-token");
     }
+
+    @Test
+    void 유효한_리프레시_토큰_재발급_성공() {}
+
+    @Test
+    void Redis와_불일치한_리프레시_토큰_재발급_예외() {}
 }
