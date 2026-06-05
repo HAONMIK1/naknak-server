@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.UUID;
 
 @Component
 public class JwtProvider {
@@ -53,6 +54,7 @@ public class JwtProvider {
         Date now = new Date();
         return Jwts.builder()
                 .claim("userId", userId)
+                .id(UUID.randomUUID().toString())
                 .issuedAt(now)
                 .expiration(new Date(now.getTime() + expirySeconds * 1000))
                 .signWith(secretKey)
