@@ -1,4 +1,4 @@
-package com.na.naknak.server.user.kakao;
+package com.na.naknak.server.user.infrastructure.kakao;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
