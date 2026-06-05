@@ -55,4 +55,7 @@ class AuthServiceTest {
                 .isInstanceOf(BusinessException.class);
         verify(refreshTokenRepository).delete(1L);
     }
+
+    @Test
+    void 로그아웃_성공() {}
 }
