@@ -1,6 +1,10 @@
 package com.na.naknak.server.user.application;
 
+import com.na.naknak.server.common.exception.BusinessException;
+import com.na.naknak.server.common.exception.ErrorCode;
 import com.na.naknak.server.common.security.JwtProvider;
+import com.na.naknak.server.user.domain.InviteCode;
+import com.na.naknak.server.user.domain.User;
 import com.na.naknak.server.user.domain.repository.InviteCodeRepository;
 import com.na.naknak.server.user.domain.repository.UserRepository;
 import com.na.naknak.server.user.infrastructure.kakao.KakaoApiClient;
