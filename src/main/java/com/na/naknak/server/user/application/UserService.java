@@ -11,9 +11,12 @@ import com.na.naknak.server.user.infrastructure.kakao.KakaoApiClient;
 import com.na.naknak.server.user.infrastructure.kakao.KakaoUserInfo;
 import com.na.naknak.server.user.infrastructure.redis.RefreshTokenRepository;
 import com.na.naknak.server.user.presentation.dto.LoginResponse;
+import com.na.naknak.server.user.presentation.dto.UserProfileResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -65,5 +68,46 @@ public class UserService {
         refreshTokenRepository.save(user.getId(), refreshToken);
 
         return LoginResponse.authenticated(accessToken, refreshToken);
+    }
+
+    @Transactional(readOnly = true)
+    public UserProfileResponse getMyProfile(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        return UserProfileResponse.from(user);
+    }
+
+    @Transactional(readOnly = true)
+    public UserProfileResponse getUserProfile(Long userId) {
+        User user = userRepository.findById(userId)
+                .filter(u -> !u.isDeleted())
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        return UserProfileResponse.from(user);
+    }
+
+    @Transactional
+    public void updateNickname(Long userId, String nickname) {
+        if (userRepository.existsByNickname(nickname)) {
+            throw new BusinessException(ErrorCode.DUPLICATE_NICKNAME);
+        }
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        user.updateNickname(nickname);
+    }
+
+    @Transactional(readOnly = true)
+    public List<UserProfileResponse> searchUsers(String keyword) {
+        return userRepository.findByNicknameContaining(keyword).stream()
+                .filter(u -> !u.isDeleted())
+                .map(UserProfileResponse::from)
+                .toList();
+    }
+
+    @Transactional
+    public void withdraw(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        user.delete();
+        refreshTokenRepository.delete(userId);
     }
 }
