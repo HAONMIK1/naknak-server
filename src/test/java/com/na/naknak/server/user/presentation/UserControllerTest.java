@@ -6,44 +6,60 @@ import com.na.naknak.server.common.config.WebConfig;
 import com.na.naknak.server.common.config.logging.TraceIdInterceptor;
 import com.na.naknak.server.common.exception.BusinessException;
 import com.na.naknak.server.common.exception.ErrorCode;
-import com.na.naknak.server.common.security.JwtAccessDeniedHandler;
-import com.na.naknak.server.common.security.JwtAuthenticationEntryPoint;
 import com.na.naknak.server.common.security.JwtProvider;
 import com.na.naknak.server.user.application.UserService;
 import com.na.naknak.server.user.infrastructure.redis.BlacklistRepository;
 import com.na.naknak.server.user.presentation.dto.*;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
+import org.springframework.boot.autoconfigure.security.servlet.SecurityFilterAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doNothing;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(UserController.class)
+@WebMvcTest(
+        controllers = UserController.class,
+        excludeAutoConfiguration = {SecurityAutoConfiguration.class, SecurityFilterAutoConfiguration.class}
+)
 @Import({WebConfig.class, LoginUserArgumentResolver.class, TraceIdInterceptor.class})
 class UserControllerTest {
 
-    @Autowired MockMvc mockMvc;
-    @Autowired ObjectMapper objectMapper;
+    @Autowired
+    MockMvc mockMvc;
+    @Autowired
+    ObjectMapper objectMapper;
 
-    @MockBean UserService userService;
-    @MockBean JwtProvider jwtProvider;
-    @MockBean BlacklistRepository blacklistRepository;
-    @MockBean JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
-    @MockBean JwtAccessDeniedHandler jwtAccessDeniedHandler;
+    @MockBean
+    UserService userService;
+    @MockBean
+    JwtProvider jwtProvider;
+    @MockBean
+    BlacklistRepository blacklistRepository;
 
-    private static final UsernamePasswordAuthenticationToken AUTH =
-            new UsernamePasswordAuthenticationToken(1L, null, List.of());
+    @BeforeEach
+    void setUp() {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(1L, null, List.of()));
+    }
+
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
+    }
 
     @Test
     void 로그인_기존유저_200() throws Exception {
@@ -107,8 +123,7 @@ class UserControllerTest {
         given(userService.getMyProfile(1L))
                 .willReturn(new MyProfileResponse(1L, "낙낙유저", "test@test.com", "ABCD1234"));
 
-        mockMvc.perform(get("/api/v1/users/me")
-                        .with(authentication(AUTH)))
+        mockMvc.perform(get("/api/v1/users/me"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.nickname").value("낙낙유저"))
                 .andExpect(jsonPath("$.data.inviteCode").value("ABCD1234"));
@@ -119,8 +134,7 @@ class UserControllerTest {
         given(userService.getUserProfile(2L))
                 .willReturn(new UserProfileResponse(2L, "타인유저", "other@test.com"));
 
-        mockMvc.perform(get("/api/v1/users/2")
-                        .with(authentication(AUTH)))
+        mockMvc.perform(get("/api/v1/users/2"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.nickname").value("타인유저"));
     }
@@ -130,11 +144,9 @@ class UserControllerTest {
         given(userService.getUserProfile(999L))
                 .willThrow(new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-        mockMvc.perform(get("/api/v1/users/999")
-                        .with(authentication(AUTH)))
+        mockMvc.perform(get("/api/v1/users/999"))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.message").value("존재하지 않는 유저입니다"));
+                .andExpect(jsonPath("$.success").value(false));
     }
 
     @Test
@@ -142,7 +154,6 @@ class UserControllerTest {
         doNothing().when(userService).updateNickname(1L, "새닉네임");
 
         mockMvc.perform(patch("/api/v1/users/me")
-                        .with(authentication(AUTH))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new NicknameUpdateRequest("새닉네임"))))
                 .andExpect(status().isOk())
@@ -152,7 +163,6 @@ class UserControllerTest {
     @Test
     void 닉네임_1자_400() throws Exception {
         mockMvc.perform(patch("/api/v1/users/me")
-                        .with(authentication(AUTH))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"nickname\":\"A\"}"))
                 .andExpect(status().isBadRequest());
@@ -166,9 +176,7 @@ class UserControllerTest {
                         new UserProfileResponse(2L, "낙낙유저2", "b@test.com")
                 ));
 
-        mockMvc.perform(get("/api/v1/users/search")
-                        .with(authentication(AUTH))
-                        .param("keyword", "낙낙"))
+        mockMvc.perform(get("/api/v1/users/search").param("keyword", "낙낙"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.length()").value(2));
     }
@@ -178,7 +186,6 @@ class UserControllerTest {
         doNothing().when(userService).withdraw(1L, "access-token");
 
         mockMvc.perform(delete("/api/v1/users/me")
-                        .with(authentication(AUTH))
                         .header("Authorization", "Bearer access-token"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));

@@ -6,45 +6,61 @@ import com.na.naknak.server.common.config.WebConfig;
 import com.na.naknak.server.common.config.logging.TraceIdInterceptor;
 import com.na.naknak.server.common.exception.BusinessException;
 import com.na.naknak.server.common.exception.ErrorCode;
-import com.na.naknak.server.common.security.JwtAccessDeniedHandler;
-import com.na.naknak.server.common.security.JwtAuthenticationEntryPoint;
 import com.na.naknak.server.common.security.JwtProvider;
 import com.na.naknak.server.user.application.AuthService;
 import com.na.naknak.server.user.infrastructure.redis.BlacklistRepository;
 import com.na.naknak.server.user.presentation.dto.TokenRefreshRequest;
 import com.na.naknak.server.user.presentation.dto.TokenResponse;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
+import org.springframework.boot.autoconfigure.security.servlet.SecurityFilterAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doNothing;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(AuthController.class)
+@WebMvcTest(
+        controllers = AuthController.class,
+        excludeAutoConfiguration = {SecurityAutoConfiguration.class, SecurityFilterAutoConfiguration.class}
+)
 @Import({WebConfig.class, LoginUserArgumentResolver.class, TraceIdInterceptor.class})
 class AuthControllerTest {
 
-    @Autowired MockMvc mockMvc;
-    @Autowired ObjectMapper objectMapper;
+    @Autowired
+    MockMvc mockMvc;
+    @Autowired
+    ObjectMapper objectMapper;
 
-    @MockBean AuthService authService;
-    @MockBean JwtProvider jwtProvider;
-    @MockBean BlacklistRepository blacklistRepository;
-    @MockBean JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
-    @MockBean JwtAccessDeniedHandler jwtAccessDeniedHandler;
+    @MockBean
+    AuthService authService;
+    @MockBean
+    JwtProvider jwtProvider;
+    @MockBean
+    BlacklistRepository blacklistRepository;
 
-    private static final UsernamePasswordAuthenticationToken AUTH =
-            new UsernamePasswordAuthenticationToken(1L, null, List.of());
+    @BeforeEach
+    void setUp() {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(1L, null, List.of()));
+    }
+
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
+    }
 
     @Test
     void 토큰_재발급_성공() throws Exception {
@@ -86,7 +102,6 @@ class AuthControllerTest {
         doNothing().when(authService).logout(1L, "access-token");
 
         mockMvc.perform(post("/api/v1/auth/logout")
-                        .with(authentication(AUTH))
                         .header("Authorization", "Bearer access-token"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
