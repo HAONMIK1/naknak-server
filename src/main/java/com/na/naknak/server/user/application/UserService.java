@@ -9,6 +9,7 @@ import com.na.naknak.server.user.domain.repository.InviteCodeRepository;
 import com.na.naknak.server.user.domain.repository.UserRepository;
 import com.na.naknak.server.user.infrastructure.kakao.KakaoApiClient;
 import com.na.naknak.server.user.infrastructure.kakao.KakaoUserInfo;
+import com.na.naknak.server.user.infrastructure.redis.BlacklistRepository;
 import com.na.naknak.server.user.infrastructure.redis.RefreshTokenRepository;
 import com.na.naknak.server.user.presentation.dto.LoginResponse;
 import com.na.naknak.server.user.presentation.dto.UserProfileResponse;
@@ -27,6 +28,7 @@ public class UserService {
     private final JwtProvider jwtProvider;
     private final RefreshTokenRepository refreshTokenRepository;
     private final InviteCodeRepository inviteCodeRepository;
+    private final BlacklistRepository blacklistRepository;
 
     @Transactional
     public LoginResponse login(String kakaoAccessToken) {
@@ -104,10 +106,14 @@ public class UserService {
     }
 
     @Transactional
-    public void withdraw(Long userId) {
+    public void withdraw(Long userId, String accessToken) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
         user.delete();
         refreshTokenRepository.delete(userId);
+        long ttl = jwtProvider.getExpiration(accessToken);
+        if (ttl > 0) {
+            blacklistRepository.save(accessToken, ttl);
+        }
     }
 }
