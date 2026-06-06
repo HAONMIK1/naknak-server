@@ -13,7 +13,13 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.na.naknak.server.common.auth.LoginUser;
+import com.na.naknak.server.user.presentation.dto.MyProfileResponse;
+import com.na.naknak.server.user.presentation.dto.NicknameUpdateRequest;
+import com.na.naknak.server.user.presentation.dto.UserProfileResponse;
+import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 @RestController
 @RequestMapping("/api/v1/users")
 @RequiredArgsConstructor
@@ -37,4 +43,40 @@ public class UserController {
         );
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
+
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse<MyProfileResponse>> getMyProfile(@LoginUser Long userId) {
+        return ResponseEntity.ok(ApiResponse.ok(userService.getMyProfile(userId)));
+    }
+
+    @GetMapping("/{userId}")
+    public ResponseEntity<ApiResponse<UserProfileResponse>> getUserProfile(@PathVariable Long userId) {
+        return ResponseEntity.ok(ApiResponse.ok(userService.getUserProfile(userId)));
+    }
+
+    @PatchMapping("/me")
+    public ResponseEntity<ApiResponse<Void>> updateNickname(
+            @LoginUser Long userId,
+            @Valid @RequestBody NicknameUpdateRequest request
+    ) {
+        userService.updateNickname(userId, request.nickname());
+        return ResponseEntity.ok(ApiResponse.ok("닉네임이 수정되었습니다."));
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<ApiResponse<List<UserProfileResponse>>> searchUsers(
+            @RequestParam String keyword
+    ) {
+        return ResponseEntity.ok(ApiResponse.ok(userService.searchUsers(keyword)));
+    }
+
+    @DeleteMapping("/me")
+    public ResponseEntity<ApiResponse<Void>> withdraw(
+            @LoginUser Long userId,
+            @RequestHeader("Authorization") String authHeader
+    ) {
+        userService.withdraw(userId, authHeader.substring(7));
+        return ResponseEntity.ok(ApiResponse.ok("회원탈퇴가 완료되었습니다."));
+    }
+
 }
