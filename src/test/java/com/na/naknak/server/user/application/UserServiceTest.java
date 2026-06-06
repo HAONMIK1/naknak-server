@@ -139,4 +139,66 @@ class UserServiceTest {
         assertThat(response.accessToken()).isEqualTo("access-token");
     }
 
+    @Test
+    void 내_프로필_조회_성공() throws Exception{
+        //given
+
+        //when
+
+        //then
+    }
+
+    @Test
+    void 존재하지_않는_유저_조회_시_예외() throws Exception{
+        //given
+
+        //when
+
+        //then
+    }
+
+    @Test
+    void 타인_프로필_조회_성공() throws Exception{
+        //given
+
+        //when
+
+        //then
+    }
+
+    @Test
+    void 닉네임_수정_성공() throws Exception{
+        //given
+
+        //when
+
+        //then
+    }
+
+    @Test
+    void 중복_닉네임으로_수정_시_예외() throws Exception{
+        //given
+
+        //when
+
+        //then
+    }
+
+    @Test
+    void 유저_검색_성공() throws Exception{
+        //given
+
+        //when
+
+        //then
+    }
+
+    @Test
+    void 회원탈퇴_성공() throws Exception{
+        //given
+
+        //when
+
+        //then
+    }
 }
