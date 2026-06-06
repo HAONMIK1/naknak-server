@@ -11,6 +11,7 @@ import com.na.naknak.server.user.infrastructure.kakao.KakaoUserInfo;
 import com.na.naknak.server.user.infrastructure.redis.BlacklistRepository;
 import com.na.naknak.server.user.infrastructure.redis.RefreshTokenRepository;
 import com.na.naknak.server.user.presentation.dto.LoginResponse;
+import com.na.naknak.server.user.presentation.dto.MyProfileResponse;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -151,7 +152,7 @@ class UserServiceTest {
         given(userRepository.findById(1L)).willReturn(Optional.of(user));
 
         // when
-        UserProfileResponse response = userService.getMyProfile(1L);
+        MyProfileResponse response = userService.getMyProfile(1L);
 
         // then
         assertThat(response.nickname()).isEqualTo("테스트유저");

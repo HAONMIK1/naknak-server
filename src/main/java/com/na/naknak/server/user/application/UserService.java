@@ -12,6 +12,7 @@ import com.na.naknak.server.user.infrastructure.kakao.KakaoUserInfo;
 import com.na.naknak.server.user.infrastructure.redis.BlacklistRepository;
 import com.na.naknak.server.user.infrastructure.redis.RefreshTokenRepository;
 import com.na.naknak.server.user.presentation.dto.LoginResponse;
+import com.na.naknak.server.user.presentation.dto.MyProfileResponse;
 import com.na.naknak.server.user.presentation.dto.UserProfileResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -81,10 +82,14 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
-    public UserProfileResponse getMyProfile(Long userId) {
+    public MyProfileResponse getMyProfile(Long userId) {
         User user = userRepository.findById(userId)
+                .filter(u -> !u.isDeleted())
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
-        return UserProfileResponse.from(user);
+        String inviteCode = inviteCodeRepository.findByCreatedByAndUsedByIsNull(user)
+                .map(InviteCode::getCode)
+                .orElse(null);
+        return MyProfileResponse.from(user, inviteCode);
     }
 
     @Transactional(readOnly = true)
@@ -124,4 +129,6 @@ public class UserService {
             blacklistRepository.save(accessToken, ttl);
         }
     }
+
+
 }
