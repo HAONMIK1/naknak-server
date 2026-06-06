@@ -8,6 +8,7 @@ import com.na.naknak.server.user.domain.repository.InviteCodeRepository;
 import com.na.naknak.server.user.domain.repository.UserRepository;
 import com.na.naknak.server.user.infrastructure.kakao.KakaoApiClient;
 import com.na.naknak.server.user.infrastructure.kakao.KakaoUserInfo;
+import com.na.naknak.server.user.infrastructure.redis.BlacklistRepository;
 import com.na.naknak.server.user.infrastructure.redis.RefreshTokenRepository;
 import com.na.naknak.server.user.presentation.dto.LoginResponse;
 import org.junit.jupiter.api.Test;
@@ -15,7 +16,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
+import com.na.naknak.server.user.infrastructure.redis.BlacklistRepository;
+import com.na.naknak.server.user.presentation.dto.UserProfileResponse;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -40,6 +43,8 @@ class UserServiceTest {
     private RefreshTokenRepository refreshTokenRepository;
     @Mock
     private InviteCodeRepository inviteCodeRepository;
+    @Mock
+    private BlacklistRepository blacklistRepository;
 
     @Test
     void 기존_유저_로그인_AUTHENTICATED_반환() {
@@ -140,65 +145,96 @@ class UserServiceTest {
     }
 
     @Test
-    void 내_프로필_조회_성공() throws Exception{
-        //given
+    void 내_프로필_조회_성공() {
+        // given
+        User user = User.create("12345", "test@test.com", "테스트유저");
+        given(userRepository.findById(1L)).willReturn(Optional.of(user));
 
-        //when
+        // when
+        UserProfileResponse response = userService.getMyProfile(1L);
 
-        //then
+        // then
+        assertThat(response.nickname()).isEqualTo("테스트유저");
+        assertThat(response.email()).isEqualTo("test@test.com");
     }
 
     @Test
-    void 존재하지_않는_유저_조회_시_예외() throws Exception{
-        //given
+    void 존재하지_않는_유저_조회_시_예외() {
+        // given
+        given(userRepository.findById(999L)).willReturn(Optional.empty());
 
-        //when
-
-        //then
+        // when & then
+        assertThatThrownBy(() -> userService.getMyProfile(999L))
+                .isInstanceOf(BusinessException.class);
     }
 
     @Test
-    void 타인_프로필_조회_성공() throws Exception{
-        //given
+    void 타인_프로필_조회_성공() {
+        // given
+        User user = User.create("99999", "other@test.com", "타인유저");
+        given(userRepository.findById(2L)).willReturn(Optional.of(user));
 
-        //when
+        // when
+        UserProfileResponse response = userService.getUserProfile(2L);
 
-        //then
+        // then
+        assertThat(response.nickname()).isEqualTo("타인유저");
     }
 
     @Test
-    void 닉네임_수정_성공() throws Exception{
-        //given
+    void 닉네임_수정_성공() {
+        // given
+        User user = User.create("12345", "test@test.com", "기존닉네임");
+        given(userRepository.existsByNickname("새닉네임")).willReturn(false);
+        given(userRepository.findById(1L)).willReturn(Optional.of(user));
 
-        //when
+        // when
+        userService.updateNickname(1L, "새닉네임");
 
-        //then
+        // then
+        assertThat(user.getNickname()).isEqualTo("새닉네임");
     }
 
     @Test
-    void 중복_닉네임으로_수정_시_예외() throws Exception{
-        //given
+    void 중복_닉네임으로_수정_시_예외() {
+        // given
+        given(userRepository.existsByNickname("중복닉네임")).willReturn(true);
 
-        //when
-
-        //then
+        // when & then
+        assertThatThrownBy(() -> userService.updateNickname(1L, "중복닉네임"))
+                .isInstanceOf(BusinessException.class);
     }
 
     @Test
-    void 유저_검색_성공() throws Exception{
-        //given
+    void 유저_검색_성공() {
+        // given
+        List<User> users = List.of(
+                User.create("1", "a@test.com", "낙낙유저1"),
+                User.create("2", "b@test.com", "낙낙유저2")
+        );
+        given(userRepository.findByNicknameContaining("낙낙")).willReturn(users);
 
-        //when
+        // when
+        List<UserProfileResponse> result = userService.searchUsers("낙낙");
 
-        //then
+        // then
+        assertThat(result).hasSize(2);
+        assertThat(result.get(0).nickname()).isEqualTo("낙낙유저1");
     }
 
     @Test
-    void 회원탈퇴_성공() throws Exception{
-        //given
+    void 회원탈퇴_성공() {
+        // given
+        User user = User.create("12345", "test@test.com", "테스트유저");
+        given(userRepository.findById(1L)).willReturn(Optional.of(user));
+        given(jwtProvider.getExpiration("access-token")).willReturn(900L);
 
-        //when
+        // when
+        userService.withdraw(1L, "access-token");
 
-        //then
+        // then
+        assertThat(user.isDeleted()).isTrue();
+        verify(refreshTokenRepository).delete(1L);
+        verify(blacklistRepository).save("access-token", 900L);
     }
 }
