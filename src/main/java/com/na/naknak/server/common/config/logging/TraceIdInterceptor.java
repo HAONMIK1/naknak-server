@@ -1,4 +1,5 @@
-package com.na.naknak.server.common.logging;
+package com.na.naknak.server.common.config.logging;
+
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
