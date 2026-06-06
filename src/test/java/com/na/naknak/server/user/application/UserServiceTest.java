@@ -194,6 +194,7 @@ class UserServiceTest {
 
         // then
         assertThat(user.getNickname()).isEqualTo("새닉네임");
+        verify(userRepository).save(user);
     }
 
     @Test
