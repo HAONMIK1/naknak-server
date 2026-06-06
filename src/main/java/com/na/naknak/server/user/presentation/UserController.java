@@ -29,7 +29,7 @@ public class UserController {
 
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<LoginResponse>> login(@Valid @RequestBody LoginRequest request) {
-        LoginResponse response = userService.login(request.kakaoAccessToken());
+        LoginResponse response = userService.login(request.authCode());
         HttpStatus status = "NEED_SIGNUP".equals(response.status()) ? HttpStatus.CREATED : HttpStatus.OK;
         return ResponseEntity.status(status).body(ApiResponse.ok(response));
     }

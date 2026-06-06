@@ -33,7 +33,8 @@ public class UserService {
     private final BlacklistRepository blacklistRepository;
 
     @Transactional
-    public LoginResponse login(String kakaoAccessToken) {
+    public LoginResponse login(String authCode) {
+        String kakaoAccessToken = kakaoApiClient.getAccessToken(authCode);
         KakaoUserInfo kakaoUser = kakaoApiClient.getUserInfo(kakaoAccessToken);
         String kakaoId = String.valueOf(kakaoUser.id());
 
@@ -47,7 +48,8 @@ public class UserService {
                 .orElseGet(() -> LoginResponse.needSignup(
                         kakaoId,
                         kakaoUser.email(),
-                        kakaoUser.nickname()
+                        kakaoUser.nickname(),
+                        kakaoAccessToken
                 ));
     }
 
