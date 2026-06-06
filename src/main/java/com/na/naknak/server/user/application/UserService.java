@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -64,6 +65,13 @@ public class UserService {
         User user = User.create(kakaoId, kakaoUser.email(), nickname);
         userRepository.save(user);
         invite.use(user);
+
+        String newCode;
+        do {
+            newCode = UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
+        } while (inviteCodeRepository.existsByCode(newCode));
+
+        inviteCodeRepository.save(InviteCode.create(newCode, user));
 
         String accessToken = jwtProvider.createAccessToken(user.getId());
         String refreshToken = jwtProvider.createRefreshToken(user.getId());

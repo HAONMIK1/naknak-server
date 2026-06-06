@@ -8,4 +8,6 @@ import java.util.Optional;
 public interface InviteCodeRepository extends JpaRepository<InviteCode, Long> {
 
     Optional<InviteCode> findByCodeAndUsedByIsNull(String code);
+
+    boolean existsByCode(String newCode);
 }
