@@ -13,3 +13,7 @@ jwt:
   secret: test-secret-key-must-be-at-least-256-bits-long-so-add-more-text-here
   access-token-expiry: 900
   refresh-token-expiry: 1209600
+
+  naver:
+    client-id: test-naver-client-id
+    client-secret: test-naver-client-secret
