@@ -18,7 +18,16 @@ public enum ErrorCode {
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 유저입니다"),
     DUPLICATE_NICKNAME(HttpStatus.CONFLICT, "이미 사용 중인 닉네임입니다."),
     INVALID_INVITE_CODE(HttpStatus.FORBIDDEN, "유효하지 않은 초대코드입니다."),
-    KAKAO_API_ERROR(HttpStatus.BAD_GATEWAY, "카카오 API 오류가 발생했습니다");
+    KAKAO_API_ERROR(HttpStatus.BAD_GATEWAY, "카카오 API 오류가 발생했습니다"),
+
+    // Restaurant
+    RESTAURANT_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 맛집입니다."),
+    NAVER_API_ERROR(HttpStatus.BAD_GATEWAY, "네이버 API 오류가 발생했습니다."),
+
+    // Review
+    REVIEW_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 리뷰입니다.");
     private final HttpStatus status;
     private final String message;
+
+
 }
