@@ -1,0 +1,12 @@
+# 이 파일을 복사해서 terraform.tfvars 로 만들고 실제 값을 채우세요.
+#   cp terraform.tfvars.example terraform.tfvars
+# terraform.tfvars 는 .gitignore 되어 있어 커밋되지 않습니다.
+
+jwt_secret          = "여기에-64자-이상-랜덤-문자열"
+kakao_client_id     = "카카오-REST-API-키"
+kakao_client_secret = "카카오-시크릿"
+naver_client_id     = "네이버-검색-ClientID"
+naver_client_secret = "네이버-검색-Secret"
+
+# ALB 주소가 생기는 Phase 4 이후 채웁니다. 지금은 그대로 비워두세요.
+kakao_redirect_uri = ""
