@@ -14,6 +14,6 @@ jwt:
   access-token-expiry: 900
   refresh-token-expiry: 1209600
 
-  naver:
-    client-id: test-naver-client-id
-    client-secret: test-naver-client-secret
+naver:
+  client-id: test-naver-client-id
+  client-secret: test-naver-client-secret
