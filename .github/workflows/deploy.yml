@@ -54,8 +54,8 @@ jobs:
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            aws ecr get-login-password --region ap-northeast-2 | docker login --username AWS --password-stdin 139214070114.dkr.ecr.ap-northeast-2.amazonaws.com
-            docker pull 139214070114.dkr.ecr.ap-northeast-2.amazonaws.com/naknak-server:latest
-            docker rm -f naknak || true
-            docker run -d --name naknak --restart always -p 8080:8080 --env-file /opt/naknak.env 139214070114.dkr.ecr.ap-northeast-2.amazonaws.com/naknak-server:latest
-            docker image prune -f
+            aws ecr get-login-password --region ap-northeast-2 | sudo docker login --username AWS --password-stdin 139214070114.dkr.ecr.ap-northeast-2.amazonaws.com
+            sudo docker pull 139214070114.dkr.ecr.ap-northeast-2.amazonaws.com/naknak-server:latest
+            sudo docker rm -f naknak || true
+            sudo docker run -d --name naknak --restart always -p 8080:8080 --env-file /opt/naknak.env 139214070114.dkr.ecr.ap-northeast-2.amazonaws.com/naknak-server:latest
+            sudo docker image prune -f
