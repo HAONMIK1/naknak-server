@@ -78,7 +78,7 @@ class UserControllerTest {
     @Test
     void 로그인_신규유저_201() throws Exception {
         given(userService.login("kakao-token"))
-                .willReturn(LoginResponse.needSignup("12345", "test@test.com", "테스터"));
+                .willReturn(LoginResponse.needSignup("12345", "test@test.com", "테스터", "kakao-token"));
 
         mockMvc.perform(post("/api/v1/users/login")
                         .contentType(MediaType.APPLICATION_JSON)

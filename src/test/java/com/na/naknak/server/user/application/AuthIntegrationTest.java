@@ -61,6 +61,7 @@ class AuthIntegrationTest {
     private KakaoApiClient kakaoApiClient;
 
     private static final String KAKAO_TOKEN = "kakao-token";
+    private static final String AUTH_CODE = "auth-code";
     private static final String KAKAO_ID = "12345";
     private static final String INVITE_CODE = "TESTCODE";
 
@@ -74,13 +75,14 @@ class AuthIntegrationTest {
 
     @Test
     void 신규_유저_로그인_NEED_SIGNUP_반환() {
+        given(kakaoApiClient.getAccessToken(AUTH_CODE)).willReturn(KAKAO_TOKEN);
         given(kakaoApiClient.getUserInfo(KAKAO_TOKEN)).willReturn(
                 new KakaoUserInfo(Long.parseLong(KAKAO_ID),
                         new KakaoUserInfo.KakaoAccount("new@test.com",
                                 new KakaoUserInfo.KakaoProfile("신규유저")))
         );
 
-        LoginResponse response = userService.login(KAKAO_TOKEN);
+        LoginResponse response = userService.login(AUTH_CODE);
 
         assertThat(response.status()).isEqualTo("NEED_SIGNUP");
         assertThat(response.kakaoId()).isEqualTo(KAKAO_ID);
@@ -88,6 +90,7 @@ class AuthIntegrationTest {
 
     @Test
     void 회원가입_성공_토큰_반환() {
+        given(kakaoApiClient.getAccessToken(AUTH_CODE)).willReturn(KAKAO_TOKEN);
         given(kakaoApiClient.getUserInfo(KAKAO_TOKEN)).willReturn(
                 new KakaoUserInfo(Long.parseLong(KAKAO_ID),
                         new KakaoUserInfo.KakaoAccount("new@test.com",
@@ -104,6 +107,7 @@ class AuthIntegrationTest {
 
     @Test
     void 회원가입_후_로그인_AUTHENTICATED_반환() {
+        given(kakaoApiClient.getAccessToken(AUTH_CODE)).willReturn(KAKAO_TOKEN);
         given(kakaoApiClient.getUserInfo(KAKAO_TOKEN)).willReturn(
                 new KakaoUserInfo(Long.parseLong(KAKAO_ID),
                         new KakaoUserInfo.KakaoAccount("new@test.com",
@@ -111,7 +115,7 @@ class AuthIntegrationTest {
         );
         userService.signup(KAKAO_TOKEN, INVITE_CODE, "신규유저");
 
-        LoginResponse response = userService.login(KAKAO_TOKEN);
+        LoginResponse response = userService.login(AUTH_CODE);
 
         assertThat(response.status()).isEqualTo("AUTHENTICATED");
         assertThat(response.accessToken()).isNotNull();
@@ -119,6 +123,7 @@ class AuthIntegrationTest {
 
     @Test
     void 토큰_재발급_성공_및_RTR_검증() {
+        given(kakaoApiClient.getAccessToken(AUTH_CODE)).willReturn(KAKAO_TOKEN);
         given(kakaoApiClient.getUserInfo(KAKAO_TOKEN)).willReturn(
                 new KakaoUserInfo(Long.parseLong(KAKAO_ID),
                         new KakaoUserInfo.KakaoAccount("new@test.com",
@@ -137,6 +142,7 @@ class AuthIntegrationTest {
 
     @Test
     void 로그아웃_후_블랙리스트_등록() {
+        given(kakaoApiClient.getAccessToken(AUTH_CODE)).willReturn(KAKAO_TOKEN);
         given(kakaoApiClient.getUserInfo(KAKAO_TOKEN)).willReturn(
                 new KakaoUserInfo(Long.parseLong(KAKAO_ID),
                         new KakaoUserInfo.KakaoAccount("new@test.com",

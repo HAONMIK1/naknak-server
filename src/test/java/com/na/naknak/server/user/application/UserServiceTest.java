@@ -57,13 +57,14 @@ class UserServiceTest {
         );
         User user = User.create("12345", "test@test.com", "테스트유저");
 
+        given(kakaoApiClient.getAccessToken("auth-code")).willReturn("kakao-token");
         given(kakaoApiClient.getUserInfo("kakao-token")).willReturn(kakaoUserInfo);
         given(userRepository.findByKakaoId("12345")).willReturn(Optional.of(user));
         given(jwtProvider.createAccessToken(user.getId())).willReturn("access-token");
         given(jwtProvider.createRefreshToken(user.getId())).willReturn("refresh-token");
 
         // when
-        LoginResponse response = userService.login("kakao-token");
+        LoginResponse response = userService.login("auth-code");
 
         // then
         assertThat(response.status()).isEqualTo("AUTHENTICATED");
@@ -81,11 +82,12 @@ class UserServiceTest {
                         new KakaoUserInfo.KakaoProfile("신규유저"))
         );
 
+        given(kakaoApiClient.getAccessToken("auth-code")).willReturn("kakao-token");
         given(kakaoApiClient.getUserInfo("kakao-token")).willReturn(kakaoUserInfo);
         given(userRepository.findByKakaoId("99999")).willReturn(Optional.empty());
 
         // when
-        LoginResponse response = userService.login("kakao-token");
+        LoginResponse response = userService.login("auth-code");
 
         // then
         assertThat(response.status()).isEqualTo("NEED_SIGNUP");

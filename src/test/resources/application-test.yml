@@ -17,3 +17,8 @@ jwt:
 naver:
   client-id: test-naver-client-id
   client-secret: test-naver-client-secret
+
+kakao:
+  client-id: test-kakao-client-id
+  client-secret: test-kakao-client-secret
+  redirect-uri: http://localhost:5173/kakao/callback
