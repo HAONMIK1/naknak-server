@@ -74,7 +74,7 @@ class ReviewControllerTest {
 
     private ReviewResponse sampleResponse() {
         return new ReviewResponse(
-                100L, 10L, 1L, "낙낙유저", "맛있어요", 5,
+                100L, 10L, "스시로", 1L, "낙낙유저", "맛있어요", 5,
                 List.of("http://img1"), LocalDateTime.now());
     }
 

@@ -10,6 +10,7 @@ import java.util.List;
 public record ReviewResponse(
         Long id,
         Long restaurantId,
+        String restaurantName,
         Long userId,
         String nickname,
         String content,
@@ -25,6 +26,7 @@ public record ReviewResponse(
         return new ReviewResponse(
                 review.getId(),
                 review.getRestaurant().getId(),
+                review.getRestaurant().getName(),
                 review.getUser().getId(),
                 review.getUser().getNickname(),
                 review.getContent(),
