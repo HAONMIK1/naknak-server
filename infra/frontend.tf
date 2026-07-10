@@ -48,6 +48,13 @@ resource "aws_cloudfront_distribution" "front" {
     }
   }
 
+  # 오리진 3: S3 (리뷰 사진 업로드)
+  origin {
+    domain_name              = aws_s3_bucket.uploads.bucket_regional_domain_name
+    origin_id                = "s3-uploads"
+    origin_access_control_id = aws_cloudfront_origin_access_control.uploads.id
+  }
+
   # 기본: 정적 파일 (캐시 O)
   default_cache_behavior {
     target_origin_id       = "s3-front"
@@ -66,6 +73,16 @@ resource "aws_cloudfront_distribution" "front" {
     cached_methods           = ["GET", "HEAD"]
     cache_policy_id          = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad" # Managed-CachingDisabled
     origin_request_policy_id = "216adef6-5c7f-47e4-b989-5492eafa07d3" # Managed-AllViewer
+  }
+
+  # /uploads/* 는 S3 사진 (캐시 O — 업로드 후 내용이 안 바뀌는 정적 파일)
+  ordered_cache_behavior {
+    path_pattern           = "/uploads/*"
+    target_origin_id       = "s3-uploads"
+    viewer_protocol_policy = "redirect-to-https"
+    allowed_methods        = ["GET", "HEAD"]
+    cached_methods         = ["GET", "HEAD"]
+    cache_policy_id        = "658327ea-f89d-4fab-a63d-7e88639e58f6" # Managed-CachingOptimized
   }
 
   # SPA 라우팅: 없는 경로는 index.html 로 (wouter 클라이언트 라우팅)
