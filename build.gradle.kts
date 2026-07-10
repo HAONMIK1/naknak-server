@@ -50,6 +50,9 @@ dependencies {
 	// Logging
 	implementation("net.logstash.logback:logstash-logback-encoder:7.4")
 
+	// AWS S3 (리뷰 사진 업로드)
+	implementation("software.amazon.awssdk:s3:2.29.52")
+
 	testImplementation("org.springframework.boot:spring-boot-testcontainers")
 	testImplementation("org.testcontainers:junit-jupiter")
 	testImplementation("org.testcontainers:postgresql")
