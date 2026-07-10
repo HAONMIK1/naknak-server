@@ -81,6 +81,35 @@ class ReviewServiceTest {
     }
 
     @Test
+    void 본인_리뷰_수정_성공() {
+        // given
+        Review review = Review.create(userWithId(1L), restaurantWithId(2L), "기존 내용", 3);
+        given(reviewRepository.findById(5L)).willReturn(Optional.of(review));
+        ReviewCreateRequest request = new ReviewCreateRequest("수정된 내용", 5, List.of("http://new-img"));
+
+        // when
+        ReviewResponse response = reviewService.update(1L, 5L, request);
+
+        // then
+        assertThat(response.content()).isEqualTo("수정된 내용");
+        assertThat(response.rating()).isEqualTo(5);
+        assertThat(response.imageUrls()).containsExactly("http://new-img");
+    }
+
+    @Test
+    void 타인_리뷰_수정_FORBIDDEN() {
+        // given
+        Review review = Review.create(userWithId(2L), restaurantWithId(2L), "기존 내용", 3);
+        given(reviewRepository.findById(5L)).willReturn(Optional.of(review));
+        ReviewCreateRequest request = new ReviewCreateRequest("수정된 내용", 5, null);
+
+        // when & then
+        assertThatThrownBy(() -> reviewService.update(1L, 5L, request))
+                .isInstanceOf(BusinessException.class);
+        assertThat(review.getContent()).isEqualTo("기존 내용");
+    }
+
+    @Test
     void 본인_리뷰_삭제_성공() {
         // given
         Review review = Review.create(userWithId(1L), restaurantWithId(2L), "내용", 4);
