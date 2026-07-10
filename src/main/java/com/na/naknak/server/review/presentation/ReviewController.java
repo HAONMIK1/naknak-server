@@ -43,6 +43,15 @@ public class ReviewController {
         return ResponseEntity.ok(ApiResponse.ok(reviewService.getMyReviews(userId, pageable)));
     }
 
+    @PatchMapping("/api/v1/reviews/{reviewId}")
+    public ResponseEntity<ApiResponse<ReviewResponse>> update(
+            @LoginUser Long userId,
+            @PathVariable Long reviewId,
+            @Valid @RequestBody ReviewCreateRequest request
+    ) {
+        return ResponseEntity.ok(ApiResponse.ok(reviewService.update(userId, reviewId, request)));
+    }
+
     @DeleteMapping("/api/v1/reviews/{reviewId}")
     public ResponseEntity<ApiResponse<Void>> delete(
             @LoginUser Long userId,

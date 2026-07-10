@@ -59,4 +59,13 @@ public class Review extends BaseEntity {
     public void addImage(String imageUrl, int sortOrder) {
         this.images.add(ReviewImage.create(this, imageUrl, sortOrder));
     }
+
+    public void update(String content, int rating) {
+        this.content = content;
+        this.rating = rating;
+    }
+
+    public void clearImages() {
+        this.images.clear();
+    }
 }

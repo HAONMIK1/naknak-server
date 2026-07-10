@@ -59,6 +59,27 @@ public class ReviewService {
     }
 
     @Transactional
+    public ReviewResponse update(Long userId, Long reviewId, ReviewCreateRequest request) {
+        Review review = reviewRepository.findById(reviewId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.REVIEW_NOT_FOUND));
+        if (!review.getUser().getId().equals(userId)) {
+            throw new BusinessException(ErrorCode.FORBIDDEN);
+        }
+
+        review.update(request.content(), request.rating());
+
+        review.clearImages();
+        List<String> imageUrls = request.imageUrls();
+        if (imageUrls != null) {
+            for (int i = 0; i < imageUrls.size(); i++) {
+                review.addImage(imageUrls.get(i), i);
+            }
+        }
+
+        return ReviewResponse.from(review);
+    }
+
+    @Transactional
     public void delete(Long userId, Long reviewId) {
         Review review = reviewRepository.findById(reviewId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.REVIEW_NOT_FOUND));
