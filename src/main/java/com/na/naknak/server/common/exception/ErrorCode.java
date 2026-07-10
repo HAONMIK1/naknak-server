@@ -25,7 +25,13 @@ public enum ErrorCode {
     NAVER_API_ERROR(HttpStatus.BAD_GATEWAY, "네이버 API 오류가 발생했습니다."),
 
     // Review
-    REVIEW_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 리뷰입니다.");
+    REVIEW_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 리뷰입니다."),
+
+    // Upload
+    INVALID_FILE_TYPE(HttpStatus.BAD_REQUEST, "이미지 파일만 업로드할 수 있습니다."),
+    FILE_TOO_LARGE(HttpStatus.BAD_REQUEST, "파일 크기가 너무 큽니다."),
+    TOO_MANY_FILES(HttpStatus.BAD_REQUEST, "사진은 최대 5장까지 업로드할 수 있습니다."),
+    S3_UPLOAD_ERROR(HttpStatus.BAD_GATEWAY, "사진 업로드 중 오류가 발생했습니다.");
     private final HttpStatus status;
     private final String message;
 
