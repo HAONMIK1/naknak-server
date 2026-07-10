@@ -75,6 +75,13 @@ resource "aws_instance" "app" {
   user_data_replace_on_change = true
 
   tags = { Name = "${local.name}-app" }
+
+  # most_recent AMI 조회가 시간이 지나면 최신 AMI로 바뀌어서, 그대로 두면
+  # apply할 때마다 이미 떠 있는 인스턴스를 의도치 않게 재생성하려 든다.
+  # 최초 생성 이후로는 AMI 변경을 무시해서 이 드리프트를 방지한다.
+  lifecycle {
+    ignore_changes = [ami]
+  }
 }
 
 output "app_public_ip" {
