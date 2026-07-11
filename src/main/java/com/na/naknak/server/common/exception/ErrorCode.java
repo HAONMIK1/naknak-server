@@ -31,7 +31,10 @@ public enum ErrorCode {
     INVALID_FILE_TYPE(HttpStatus.BAD_REQUEST, "이미지 파일만 업로드할 수 있습니다."),
     FILE_TOO_LARGE(HttpStatus.BAD_REQUEST, "파일 크기가 너무 큽니다."),
     TOO_MANY_FILES(HttpStatus.BAD_REQUEST, "사진은 최대 5장까지 업로드할 수 있습니다."),
-    S3_UPLOAD_ERROR(HttpStatus.BAD_GATEWAY, "사진 업로드 중 오류가 발생했습니다.");
+    S3_UPLOAD_ERROR(HttpStatus.BAD_GATEWAY, "사진 업로드 중 오류가 발생했습니다."),
+
+    // Follow
+    SELF_FOLLOW_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "자기 자신을 팔로우할 수 없습니다.");
     private final HttpStatus status;
     private final String message;
 
