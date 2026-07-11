@@ -50,8 +50,11 @@ public class UserController {
     }
 
     @GetMapping("/{userId}")
-    public ResponseEntity<ApiResponse<UserProfileResponse>> getUserProfile(@PathVariable Long userId) {
-        return ResponseEntity.ok(ApiResponse.ok(userService.getUserProfile(userId)));
+    public ResponseEntity<ApiResponse<UserProfileResponse>> getUserProfile(
+            @LoginUser Long currentUserId,
+            @PathVariable Long userId
+    ) {
+        return ResponseEntity.ok(ApiResponse.ok(userService.getUserProfile(currentUserId, userId)));
     }
 
     @PatchMapping("/me")

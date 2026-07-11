@@ -6,14 +6,18 @@ public record MyProfileResponse(
         Long id,
         String nickname,
         String email,
-        String inviteCode
+        String inviteCode,
+        long followerCount,
+        long followingCount
 ) {
-    public static MyProfileResponse from(User user, String inviteCode) {
+    public static MyProfileResponse from(User user, String inviteCode, long followerCount, long followingCount) {
         return new MyProfileResponse(
                 user.getId(),
                 user.getNickname(),
                 user.getEmail(),
-                inviteCode
+                inviteCode,
+                followerCount,
+                followingCount
         );
     }
 }

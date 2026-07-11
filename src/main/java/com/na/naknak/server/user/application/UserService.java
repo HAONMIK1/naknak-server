@@ -3,6 +3,7 @@ package com.na.naknak.server.user.application;
 import com.na.naknak.server.common.exception.BusinessException;
 import com.na.naknak.server.common.exception.ErrorCode;
 import com.na.naknak.server.common.security.JwtProvider;
+import com.na.naknak.server.follow.domain.repository.FollowRepository;
 import com.na.naknak.server.user.domain.InviteCode;
 import com.na.naknak.server.user.domain.User;
 import com.na.naknak.server.user.domain.repository.InviteCodeRepository;
@@ -31,6 +32,7 @@ public class UserService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final InviteCodeRepository inviteCodeRepository;
     private final BlacklistRepository blacklistRepository;
+    private final FollowRepository followRepository;
 
     @Transactional
     public LoginResponse login(String authCode) {
@@ -91,15 +93,20 @@ public class UserService {
         String inviteCode = inviteCodeRepository.findByCreatedByAndUsedByIsNull(user)
                 .map(InviteCode::getCode)
                 .orElse(null);
-        return MyProfileResponse.from(user, inviteCode);
+        long followerCount = followRepository.countByFollowingId(userId);
+        long followingCount = followRepository.countByFollowerId(userId);
+        return MyProfileResponse.from(user, inviteCode, followerCount, followingCount);
     }
 
     @Transactional(readOnly = true)
-    public UserProfileResponse getUserProfile(Long userId) {
+    public UserProfileResponse getUserProfile(Long currentUserId, Long userId) {
         User user = userRepository.findById(userId)
                 .filter(u -> !u.isDeleted())
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
-        return UserProfileResponse.from(user);
+        long followerCount = followRepository.countByFollowingId(userId);
+        long followingCount = followRepository.countByFollowerId(userId);
+        boolean isFollowing = followRepository.existsByFollowerIdAndFollowingId(currentUserId, userId);
+        return UserProfileResponse.from(user, followerCount, followingCount, isFollowing);
     }
 
     @Transactional

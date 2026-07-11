@@ -43,6 +43,14 @@ public class ReviewController {
         return ResponseEntity.ok(ApiResponse.ok(reviewService.getMyReviews(userId, pageable)));
     }
 
+    @GetMapping("/api/v1/users/{userId}/reviews")
+    public ResponseEntity<ApiResponse<Page<ReviewResponse>>> getUserReviews(
+            @PathVariable Long userId,
+            Pageable pageable
+    ) {
+        return ResponseEntity.ok(ApiResponse.ok(reviewService.getMyReviews(userId, pageable)));
+    }
+
     @PatchMapping("/api/v1/reviews/{reviewId}")
     public ResponseEntity<ApiResponse<ReviewResponse>> update(
             @LoginUser Long userId,
