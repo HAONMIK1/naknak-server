@@ -9,6 +9,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.List;
 
@@ -59,15 +61,32 @@ public class NaverSearchClient {
     }
 
     private NaverPlaceResponse toPlace(NaverSearchResponse.Item item) {
+        String title = stripTags(item.title());
+        String address = item.address();
+        String roadAddress = item.roadAddress();
         return new NaverPlaceResponse(
-                stripTags(item.title()),
+                title,
                 item.category(),
-                item.address(),
-                item.roadAddress(),
+                address,
+                roadAddress,
                 parseCoord(item.mapy()),
                 parseCoord(item.mapx()),
-                item.link()
+                buildPlaceUrl(item.link(), title, roadAddress != null && !roadAddress.isBlank() ? roadAddress : address)
         );
+    }
+
+    /**
+     * 지역검색 API의 link 필드는 "네이버 플레이스 페이지"가 아니라 업체가 등록한 자체 홈페이지
+     * URL이라 대부분 비어있거나 엉뚱한 곳을 가리킨다. place.naver.com/map.naver.com 링크가
+     * 아니면 신뢰하지 않고, 이름+주소로 네이버 지도 검색 URL을 대신 만들어 안내한다.
+     * (지역검색 API는 무료 범위에서 실제 플레이스 ID를 제공하지 않아 완벽한 딥링크는 불가능하다.)
+     */
+    private String buildPlaceUrl(String link, String title, String address) {
+        if (link != null && (link.contains("place.naver.com") || link.contains("map.naver.com"))) {
+            return link;
+        }
+        String query = address != null && !address.isBlank() ? title + " " + address : title;
+        return "https://map.naver.com/p/search/" + URLEncoder.encode(query, StandardCharsets.UTF_8);
     }
 
     private String stripTags(String value) {
