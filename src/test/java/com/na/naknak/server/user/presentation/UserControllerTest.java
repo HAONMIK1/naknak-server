@@ -121,27 +121,31 @@ class UserControllerTest {
     @Test
     void 내_프로필_조회_성공() throws Exception {
         given(userService.getMyProfile(1L))
-                .willReturn(new MyProfileResponse(1L, "낙낙유저", "test@test.com", "ABCD1234"));
+                .willReturn(new MyProfileResponse(1L, "낙낙유저", "test@test.com", "ABCD1234", 3L, 5L));
 
         mockMvc.perform(get("/api/v1/users/me"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.nickname").value("낙낙유저"))
-                .andExpect(jsonPath("$.data.inviteCode").value("ABCD1234"));
+                .andExpect(jsonPath("$.data.inviteCode").value("ABCD1234"))
+                .andExpect(jsonPath("$.data.followerCount").value(3))
+                .andExpect(jsonPath("$.data.followingCount").value(5));
     }
 
     @Test
     void 타인_프로필_조회_성공() throws Exception {
-        given(userService.getUserProfile(2L))
-                .willReturn(new UserProfileResponse(2L, "타인유저", "other@test.com"));
+        given(userService.getUserProfile(1L, 2L))
+                .willReturn(new UserProfileResponse(2L, "타인유저", "other@test.com", 7L, 1L, true));
 
         mockMvc.perform(get("/api/v1/users/2"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.nickname").value("타인유저"));
+                .andExpect(jsonPath("$.data.nickname").value("타인유저"))
+                .andExpect(jsonPath("$.data.followerCount").value(7))
+                .andExpect(jsonPath("$.data.isFollowing").value(true));
     }
 
     @Test
     void 존재하지않는_유저_조회_404() throws Exception {
-        given(userService.getUserProfile(999L))
+        given(userService.getUserProfile(1L, 999L))
                 .willThrow(new BusinessException(ErrorCode.USER_NOT_FOUND));
 
         mockMvc.perform(get("/api/v1/users/999"))
@@ -172,8 +176,8 @@ class UserControllerTest {
     void 유저_검색_성공() throws Exception {
         given(userService.searchUsers("낙낙"))
                 .willReturn(List.of(
-                        new UserProfileResponse(1L, "낙낙유저1", "a@test.com"),
-                        new UserProfileResponse(2L, "낙낙유저2", "b@test.com")
+                        new UserProfileResponse(1L, "낙낙유저1", "a@test.com", 0, 0, false),
+                        new UserProfileResponse(2L, "낙낙유저2", "b@test.com", 0, 0, false)
                 ));
 
         mockMvc.perform(get("/api/v1/users/search").param("keyword", "낙낙"))

@@ -2,6 +2,7 @@ package com.na.naknak.server.user.application;
 
 import com.na.naknak.server.common.exception.BusinessException;
 import com.na.naknak.server.common.security.JwtProvider;
+import com.na.naknak.server.follow.domain.repository.FollowRepository;
 import com.na.naknak.server.user.domain.InviteCode;
 import com.na.naknak.server.user.domain.User;
 import com.na.naknak.server.user.domain.repository.InviteCodeRepository;
@@ -46,6 +47,8 @@ class UserServiceTest {
     private InviteCodeRepository inviteCodeRepository;
     @Mock
     private BlacklistRepository blacklistRepository;
+    @Mock
+    private FollowRepository followRepository;
 
     @Test
     void 기존_유저_로그인_AUTHENTICATED_반환() {
@@ -152,6 +155,8 @@ class UserServiceTest {
         // given
         User user = User.create("12345", "test@test.com", "테스트유저");
         given(userRepository.findById(1L)).willReturn(Optional.of(user));
+        given(followRepository.countByFollowingId(1L)).willReturn(3L);
+        given(followRepository.countByFollowerId(1L)).willReturn(5L);
 
         // when
         MyProfileResponse response = userService.getMyProfile(1L);
@@ -159,6 +164,8 @@ class UserServiceTest {
         // then
         assertThat(response.nickname()).isEqualTo("테스트유저");
         assertThat(response.email()).isEqualTo("test@test.com");
+        assertThat(response.followerCount()).isEqualTo(3L);
+        assertThat(response.followingCount()).isEqualTo(5L);
     }
 
     @Test
@@ -176,12 +183,18 @@ class UserServiceTest {
         // given
         User user = User.create("99999", "other@test.com", "타인유저");
         given(userRepository.findById(2L)).willReturn(Optional.of(user));
+        given(followRepository.countByFollowingId(2L)).willReturn(7L);
+        given(followRepository.countByFollowerId(2L)).willReturn(1L);
+        given(followRepository.existsByFollowerIdAndFollowingId(1L, 2L)).willReturn(true);
 
         // when
-        UserProfileResponse response = userService.getUserProfile(2L);
+        UserProfileResponse response = userService.getUserProfile(1L, 2L);
 
         // then
         assertThat(response.nickname()).isEqualTo("타인유저");
+        assertThat(response.followerCount()).isEqualTo(7L);
+        assertThat(response.followingCount()).isEqualTo(1L);
+        assertThat(response.isFollowing()).isTrue();
     }
 
     @Test
