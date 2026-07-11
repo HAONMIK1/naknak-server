@@ -2,11 +2,13 @@ package com.na.naknak.server.user.infrastructure.kakao;
 
 import com.na.naknak.server.common.exception.BusinessException;
 import com.na.naknak.server.common.exception.ErrorCode;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+@Slf4j
 @Component
 public class KakaoApiClient {
 
@@ -40,6 +42,11 @@ public class KakaoApiClient {
                 .header("Content-Type", "application/x-www-form-urlencoded;charset=utf-8")
                 .body(body)
                 .retrieve()
+                .onStatus(HttpStatusCode::isError, (req, res) -> {
+                    String errorBody = new String(res.getBody().readAllBytes());
+                    log.warn("카카오 토큰 발급 실패: status={}, body={}", res.getStatusCode(), errorBody);
+                    throw new BusinessException(ErrorCode.KAKAO_API_ERROR);
+                })
                 .body(KakaoTokenResponse.class);
 
         return response.accessToken();
