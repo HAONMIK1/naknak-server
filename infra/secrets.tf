@@ -15,6 +15,7 @@ resource "aws_secretsmanager_secret_version" "app" {
     SPRING_DATASOURCE_PASSWORD = random_password.db.result
     SPRING_DATA_REDIS_HOST     = aws_elasticache_cluster.redis.cache_nodes[0].address
     SPRING_DATA_REDIS_PORT     = "6379"
+    SPRING_PROFILES_ACTIVE     = "prod"
     JWT_SECRET                 = var.jwt_secret
     KAKAO_CLIENT_ID            = var.kakao_client_id
     KAKAO_CLIENT_SECRET        = var.kakao_client_secret
