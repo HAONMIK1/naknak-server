@@ -4,6 +4,7 @@ import com.na.naknak.server.common.exception.BusinessException;
 import com.na.naknak.server.common.exception.ErrorCode;
 import com.na.naknak.server.follow.domain.Follow;
 import com.na.naknak.server.follow.domain.repository.FollowRepository;
+import com.na.naknak.server.follow.infrastructure.redis.NetworkDegreeCache;
 import com.na.naknak.server.user.domain.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -17,6 +18,7 @@ public class FollowService {
 
     private final FollowRepository followRepository;
     private final UserRepository userRepository;
+    private final NetworkDegreeCache networkDegreeCache;
 
     @Transactional
     public void follow(Long followerId, Long followingId) {
@@ -31,12 +33,16 @@ public class FollowService {
             return;
         }
         followRepository.save(Follow.create(followerId, followingId));
+        networkDegreeCache.invalidate(followerId);
     }
 
     @Transactional
     public void unfollow(Long followerId, Long followingId) {
         followRepository.findByFollowerIdAndFollowingId(followerId, followingId)
-                .ifPresent(followRepository::delete);
+                .ifPresent(follow -> {
+                    followRepository.delete(follow);
+                    networkDegreeCache.invalidate(followerId);
+                });
     }
 
     @Transactional(readOnly = true)
