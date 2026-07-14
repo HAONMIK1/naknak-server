@@ -20,19 +20,42 @@
 
 ## 스케일 고려사항 (100만 유저 가정)
 
-1차 구현(전체 `follows` 테이블을 한 번에 로딩해서 메모리 BFS)은 100만 유저 규모에서
-간선 수가 수천만 개일 수 있어 요청 하나가 메모리를 통째로 잡아먹는다. 두 가지를 함께 적용한다.
+1차 구현은 전체 `follows` 테이블을 한 번에 로딩해서 메모리에서 BFS를 도는 방식이었는데, 100만
+유저 규모에서 간선 수가 수천만 개일 수 있어 요청 하나가 메모리를 통째로 잡아먹는 문제가 있었다.
+그다음 앱에서 레벨별로 프론티어를 들고 다니며 배치 쿼리(`WHERE follower_id IN (...)`)를 깊이(3)
+만큼 반복하는 방식으로 바꿨는데, 이것도 DB 왕복이 3번 필요하고 사이클/최단거리 처리를 앱 코드가
+직접 해야 해서 불필요하게 복잡했다. **재귀 CTE(Common Table Expression) 한 번으로 대체한다** —
+그래프 탐색은 DB가 훨씬 잘한다.
 
-### 1. 배치 쿼리 BFS (매 요청 계산 시)
-레벨별로 `WHERE follower_id IN (:프론티어)` 형태의 배치 쿼리만 사용한다 (유저 하나씩 쿼리하는
-N+1도, 테이블 전체를 읽는 것도 하지 않는다). 쿼리 횟수는 깊이(3)에 비례할 뿐, 유저 수/간선
-수와 무관하다.
+### 1. 재귀 CTE로 촌수 계산 (매 요청 계산 시)
+```sql
+WITH RECURSIVE network(user_id, degree) AS (
+    SELECT following_id, 1
+    FROM follows
+    WHERE follower_id = :userId
 
-다만 소셜 그래프는 "6단계 분리"처럼 몇 다리만 건너도 프론티어가 폭발적으로 커질 수 있다
-(팔로워가 아주 많은 계정 하나만 껴도 2~3촌이 수만~수십만 명이 될 수 있음). 이를 막기 위해
-**레벨당 프론티어 크기에 상한(`MAX_FRONTIER_SIZE = 2000`)**을 둔다. 상한을 넘으면 그 레벨에서
-먼저 발견된 유저까지만 사용하고 나머지는 잘라낸다 — 정확도보다 요청 하나가 시스템 전체에
-영향을 주지 않는 것을 우선한다. 일반적인 사용자(팔로우 수천 명 미만)에게는 사실상 영향이 없다.
+    UNION
+
+    SELECT f.following_id, n.degree + 1
+    FROM follows f
+    INNER JOIN network n ON f.follower_id = n.user_id
+    WHERE n.degree < :maxDegree
+)
+SELECT user_id, MIN(degree) AS degree
+FROM network
+WHERE user_id <> :userId
+GROUP BY user_id
+LIMIT :maxResults
+```
+- **쿼리 한 번**으로 1~3촌을 전부 계산한다 (레벨마다 왕복하지 않음).
+- 사이클(A↔B 맞팔로우)이 있어도 재귀 조건 `n.degree < maxDegree`가 깊이를 3으로 제한하므로
+  무한 루프 없이 자연스럽게 종료된다.
+- 동일 유저가 여러 경로로 도달 가능하면(1촌이자 2촌 등) `MIN(degree)`로 최단 촌수를 취한다 —
+  BFS의 "처음 방문한 경로가 최단 경로" 성질을 SQL의 `GROUP BY` + `MIN`으로 그대로 구현.
+- 소셜 그래프는 "6단계 분리"처럼 몇 다리만 건너도 결과가 폭발적으로 커질 수 있다 (팔로워가
+  아주 많은 계정 하나만 껴도 2~3촌이 수만~수십만 명이 될 수 있음). 그래서 최종 결과에
+  `LIMIT(maxResults=5000)`을 걸어 한 요청이 시스템 전체에 영향을 주지 않게 한다 — 정확도보다
+  안전을 우선한 트레이드오프. 일반적인 사용자에게는 사실상 영향이 없다.
 
 ### 2. Redis 캐싱 (반복 요청 비용 제거)
 그래도 매 요청마다 배치 BFS를 도는 건 낭비이므로, 계산 결과를 Redis(이미 refresh
@@ -63,7 +86,7 @@ token/blacklist에 쓰고 있는 것과 동일한 Redisson 클라이언트)에 �
 ## 비즈니스 규칙
 
 - 촌수 계산에 필요한 데이터는 기존 `follows` 테이블만으로 충분하다 — 스키마 변경 없음.
-- 캐시 조회 → 미스 시 배치 BFS 계산 → 캐시 저장 → 이번 요청은 방금 계산한 값을 바로 사용
+- 캐시 조회 → 미스 시 재귀 CTE로 계산 → 캐시 저장 → 이번 요청은 방금 계산한 값을 바로 사용
   (캐시를 다시 읽는 왕복 없음).
 - 팔로우/언팔로우 시 본인 촌수 캐시를 무효화한다 (follow 도메인이 캐시를 소유).
 - 리뷰 조회는 기존 `ReviewRepository`에 `findByUserIdInAndDeletedAtIsNull(Collection<Long>, Pageable)`
@@ -106,9 +129,8 @@ sequenceDiagram
     Controller->>FeedService: getFeed(userId, degrees, pageable)
     FeedService->>NetworkDegreeCache: find(userId)
     NetworkDegreeCache-->>FeedService: 없음 (미스)
-    loop depth 1..3 (프론티어 상한 2000)
-        FeedService->>FollowRepository: findByFollowerIdIn(현재 프론티어)
-    end
+    FeedService->>FollowRepository: findNetworkDegrees(userId, maxDegree=3, maxResults=5000)
+    FollowRepository-->>FeedService: List<(userId, degree)> (재귀 CTE, 쿼리 한 번)
     FeedService->>NetworkDegreeCache: save(userId, 촌수별 유저ID 집합, TTL 10분)
     FeedService->>ReviewRepository: findByUserIdInAndDeletedAtIsNull(userIds, pageable)
     ReviewRepository-->>FeedService: Page<Review>
