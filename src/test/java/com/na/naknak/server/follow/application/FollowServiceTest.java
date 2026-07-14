@@ -3,6 +3,7 @@ package com.na.naknak.server.follow.application;
 import com.na.naknak.server.common.exception.BusinessException;
 import com.na.naknak.server.follow.domain.Follow;
 import com.na.naknak.server.follow.domain.repository.FollowRepository;
+import com.na.naknak.server.follow.infrastructure.redis.NetworkDegreeCache;
 import com.na.naknak.server.user.domain.User;
 import com.na.naknak.server.user.domain.repository.UserRepository;
 import org.junit.jupiter.api.Test;
@@ -32,6 +33,8 @@ class FollowServiceTest {
     private FollowRepository followRepository;
     @Mock
     private UserRepository userRepository;
+    @Mock
+    private NetworkDegreeCache networkDegreeCache;
 
     private User userWithId(Long id) {
         User user = User.create(String.valueOf(id), "u" + id + "@test.com", "유저" + id);
@@ -50,6 +53,7 @@ class FollowServiceTest {
 
         // then
         verify(followRepository).save(any(Follow.class));
+        verify(networkDegreeCache).invalidate(1L);
     }
 
     @Test
@@ -58,6 +62,7 @@ class FollowServiceTest {
         assertThatThrownBy(() -> followService.follow(1L, 1L))
                 .isInstanceOf(BusinessException.class);
         verify(followRepository, never()).save(any(Follow.class));
+        verify(networkDegreeCache, never()).invalidate(any());
     }
 
     @Test
@@ -71,6 +76,7 @@ class FollowServiceTest {
 
         // then
         verify(followRepository, never()).save(any(Follow.class));
+        verify(networkDegreeCache, never()).invalidate(any());
     }
 
     @Test
@@ -94,6 +100,7 @@ class FollowServiceTest {
 
         // then
         verify(followRepository).delete(follow);
+        verify(networkDegreeCache).invalidate(1L);
     }
 
     @Test
