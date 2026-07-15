@@ -13,6 +13,16 @@
 
 - 맛집 등록은 `(name, address)` 조합으로 중복을 판단한다. 이미 같은 이름+주소가 있으면 새로 만들지 않고 기존 row를 반환한다 (같은 맛집에 여러 명이 리뷰를 남기는 시나리오를 지원하기 위함).
 - `naverPlaceUrl`은 네이버 지역검색 API의 `link` 필드를 그대로 신뢰하지 않는다. 이 필드는 "네이버 플레이스 페이지"가 아니라 업체가 등록한 자체 홈페이지 URL이라 대부분 비어있거나 부정확하다. `place.naver.com`/`map.naver.com` 도메인이 아니면 이름+주소로 네이버 지도 검색 URL(`https://map.naver.com/p/search/...`)을 대신 만들어 저장한다. (지역검색 API 무료 범위에서는 실제 플레이스 ID를 제공하지 않아 완벽한 딥링크는 불가능한 구조적 한계)
+- **맛집 대표 사진**: 지역검색 API(`local.json`)는 사진을 전혀 내려주지 않는다. 그래서 맛집이 실제로
+  등록되는 시점(중복이 아니라 새로 생성되는 경우)에 네이버 이미지 검색 API(`image.json`, 지역검색과
+  동일한 클라이언트 키 사용)를 `"{name} {address}"` 쿼리로 한 번 호출해서 상위 결과 최대 3장을
+  `restaurant_images`에 저장한다. 검색 결과 후보 리스트(등록 전) 단계에서는 사진을 가져오지 않는다 —
+  후보 5개마다 이미지 API를 호출하면 느리고 낭비이므로, 사용자가 실제로 하나를 선택해 등록을
+  확정하는 순간에만 1회 호출한다.
+  - 이미 존재하는 맛집(중복 재사용)이면 이미지 API를 다시 호출하지 않는다.
+  - 이미지 검색이 실패하거나 결과가 없어도 맛집 등록 자체는 실패시키지 않는다(사진은 optional).
+  - 리뷰에 첨부된 사진(`review_images`)과는 별개 테이블이다 — 리뷰 사진은 사용자가 직접 찍어 올린
+    후기 사진, 맛집 대표 사진은 네이버 검색 결과에서 가져온 참고용 사진이라 성격이 다르다.
 
 ## 시퀀스 다이어그램
 
@@ -35,23 +45,30 @@ sequenceDiagram
     Controller-->>Client: 200 OK
 ```
 
-### 2. 맛집 등록 (중복 재사용)
+### 2. 맛집 등록 (중복 재사용 + 대표 사진 수집)
 ```mermaid
 sequenceDiagram
     actor Client
     participant Controller
     participant RestaurantService
     participant RestaurantRepository
+    participant NaverSearchClient
+    participant NaverAPI
 
     Client->>Controller: POST /api/v1/restaurants { name, address, ... }
     Controller->>RestaurantService: register(request)
     RestaurantService->>RestaurantRepository: findByNameAndAddress(name, address)
     alt 이미 존재
-        RestaurantRepository-->>RestaurantService: Restaurant
+        RestaurantRepository-->>RestaurantService: Restaurant (사진 재수집 안 함)
     else 신규
         RestaurantRepository-->>RestaurantService: empty
         RestaurantService->>RestaurantRepository: save(Restaurant.create(...))
+        RestaurantService->>NaverSearchClient: searchImages("{name} {address}", 3)
+        NaverSearchClient->>NaverAPI: GET /v1/search/image.json
+        NaverAPI-->>NaverSearchClient: items[] (실패해도 무시)
+        NaverSearchClient-->>RestaurantService: List<String> imageUrls (최대 3장)
+        RestaurantService->>RestaurantRepository: restaurant.addImage(url, i) x N
     end
-    RestaurantService-->>Controller: RestaurantResponse
+    RestaurantService-->>Controller: RestaurantResponse (imageUrls 포함)
     Controller-->>Client: 200 OK
 ```
