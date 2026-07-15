@@ -20,6 +20,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -92,6 +93,45 @@ class RestaurantServiceTest {
         // then
         assertThat(response.id()).isEqualTo(10L);
         verify(restaurantRepository, never()).save(any());
+        verify(naverSearchClient, never()).searchImages(any(), anyInt());
+    }
+
+    @Test
+    void 맛집_신규_등록시_네이버_대표사진_수집() {
+        // given
+        RestaurantRegisterRequest request = new RestaurantRegisterRequest(
+                "새맛집", "한식", "서울 강남구 역삼동", 37.5, 127.0, "http://place");
+        given(restaurantRepository.findByNameAndAddress("새맛집", "서울 강남구 역삼동"))
+                .willReturn(Optional.empty());
+        given(restaurantRepository.save(any(Restaurant.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        given(naverSearchClient.searchImages("새맛집 서울 강남구 역삼동", 3))
+                .willReturn(List.of("http://img1", "http://img2"));
+
+        // when
+        RestaurantResponse response = restaurantService.register(request);
+
+        // then
+        assertThat(response.imageUrls()).containsExactly("http://img1", "http://img2");
+    }
+
+    @Test
+    void 네이버_대표사진_검색_실패해도_등록은_성공() {
+        // given
+        RestaurantRegisterRequest request = new RestaurantRegisterRequest(
+                "새맛집", "한식", "서울 강남구 역삼동", 37.5, 127.0, "http://place");
+        given(restaurantRepository.findByNameAndAddress("새맛집", "서울 강남구 역삼동"))
+                .willReturn(Optional.empty());
+        given(restaurantRepository.save(any(Restaurant.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        given(naverSearchClient.searchImages(any(), anyInt())).willReturn(List.of());
+
+        // when
+        RestaurantResponse response = restaurantService.register(request);
+
+        // then
+        assertThat(response.name()).isEqualTo("새맛집");
+        assertThat(response.imageUrls()).isEmpty();
     }
 
     @Test

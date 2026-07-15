@@ -31,20 +31,35 @@ public class RestaurantService {
         return naverSearchClient.search(query);
     }
 
+    private static final int REPRESENTATIVE_IMAGE_COUNT = 3;
+
     @Transactional
     public RestaurantResponse register(RestaurantRegisterRequest request) {
         Restaurant restaurant = restaurantRepository
                 .findByNameAndAddress(request.name(), request.address())
-                .orElseGet(() -> restaurantRepository.save(Restaurant.create(
-                        null,
-                        request.naverPlaceUrl(),
-                        request.name(),
-                        request.category(),
-                        request.address(),
-                        request.latitude(),
-                        request.longitude()
-                )));
+                .orElseGet(() -> {
+                    Restaurant created = restaurantRepository.save(Restaurant.create(
+                            null,
+                            request.naverPlaceUrl(),
+                            request.name(),
+                            request.category(),
+                            request.address(),
+                            request.latitude(),
+                            request.longitude()
+                    ));
+                    attachNaverImages(created);
+                    return created;
+                });
         return RestaurantResponse.from(restaurant);
+    }
+
+    private void attachNaverImages(Restaurant restaurant) {
+        List<String> imageUrls = naverSearchClient.searchImages(
+                restaurant.getName() + " " + restaurant.getAddress(), REPRESENTATIVE_IMAGE_COUNT
+        );
+        for (int i = 0; i < imageUrls.size(); i++) {
+            restaurant.addImage(imageUrls.get(i), i);
+        }
     }
 
     @Transactional(readOnly = true)

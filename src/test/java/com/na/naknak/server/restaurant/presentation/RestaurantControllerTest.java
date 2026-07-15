@@ -87,7 +87,7 @@ class RestaurantControllerTest {
     void 맛집_등록_성공() throws Exception {
         given(restaurantService.register(any(RestaurantRegisterRequest.class)))
                 .willReturn(new RestaurantResponse(
-                        10L, "스시로", "일식", "서울 강남구", 37.5, 127.0, "http://place"));
+                        10L, "스시로", "일식", "서울 강남구", 37.5, 127.0, "http://place", List.of()));
 
         mockMvc.perform(post("/api/v1/restaurants")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -110,7 +110,7 @@ class RestaurantControllerTest {
     @Test
     void 등록된_맛집_검색_성공() throws Exception {
         Page<RestaurantResponse> page = new PageImpl<>(List.of(
-                new RestaurantResponse(10L, "스시로", "일식", "서울 강남구", 37.5, 127.0, "http://place")));
+                new RestaurantResponse(10L, "스시로", "일식", "서울 강남구", 37.5, 127.0, "http://place", List.of())));
         given(restaurantService.search(eq("스시"), any(Pageable.class)))
                 .willReturn(page);
 
@@ -124,7 +124,7 @@ class RestaurantControllerTest {
     void 맛집_상세_조회_성공() throws Exception {
         given(restaurantService.getDetail(10L))
                 .willReturn(new RestaurantResponse(
-                        10L, "스시로", "일식", "서울 강남구", 37.5, 127.0, "http://place"));
+                        10L, "스시로", "일식", "서울 강남구", 37.5, 127.0, "http://place", List.of()));
 
         mockMvc.perform(get("/api/v1/restaurants/10"))
                 .andExpect(status().isOk())

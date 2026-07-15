@@ -6,6 +6,9 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Getter
 @Entity
 @Table(
@@ -42,6 +45,9 @@ public class Restaurant extends BaseTimeEntity {
 
     private Double longitude;
 
+    @OneToMany(mappedBy = "restaurant", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<RestaurantImage> images = new ArrayList<>();
+
     public static Restaurant create(
             String naverPlaceId,
             String naverPlaceUrl,
@@ -60,5 +66,9 @@ public class Restaurant extends BaseTimeEntity {
         restaurant.latitude = latitude;
         restaurant.longitude = longitude;
         return restaurant;
+    }
+
+    public void addImage(String imageUrl, int sortOrder) {
+        this.images.add(RestaurantImage.create(this, imageUrl, sortOrder));
     }
 }
