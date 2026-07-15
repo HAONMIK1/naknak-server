@@ -13,6 +13,10 @@
 - 초대코드는 1회만 사용 가능
 - Refresh Token은 사용할 때마다 새 토큰으로 교체 (RTR 전략)
 - 탈퇴한 유저는 소프트 딜리트 (deleted_at)
+- **초대코드로 가입하면 초대한 사람과 자동으로 맞팔로우(상호 follow)된다.** 초대코드를 썼다는 것
+  자체가 서로 아는 사이라는 뜻이므로, 가입 직후 촌수 피드가 텅 비지 않도록 가입 트랜잭션 안에서
+  `follows` row를 양방향으로 생성한다 ([follow.md](follow.md) 참고). 팔로우 실패(이미 팔로우 중인
+  경우 등)는 발생하지 않는다 — 신규 유저이므로 항상 최초 팔로우.
 
 ---
 
@@ -97,6 +101,8 @@ sequenceDiagram
         else 닉네임 사용 가능
             Server->>DB: INSERT user
             Server->>DB: UPDATE invite_code SET used_by = ?, used_at = NOW()
+            Server->>DB: INSERT follows (inviter -> newUser), (newUser -> inviter) 상호 팔로우
+            Server->>Redis: DEL NW:{inviter}:*, NW:{newUser}:* (촌수 캐시 무효화)
             Server->>Redis: SET RT:{userId} refreshToken (TTL 14일)
             Server-->>Client: 200 { accessToken, refreshToken }
         end
