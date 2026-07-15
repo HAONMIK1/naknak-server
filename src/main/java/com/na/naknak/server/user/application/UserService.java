@@ -3,6 +3,7 @@ package com.na.naknak.server.user.application;
 import com.na.naknak.server.common.exception.BusinessException;
 import com.na.naknak.server.common.exception.ErrorCode;
 import com.na.naknak.server.common.security.JwtProvider;
+import com.na.naknak.server.follow.application.FollowService;
 import com.na.naknak.server.follow.domain.repository.FollowRepository;
 import com.na.naknak.server.user.domain.InviteCode;
 import com.na.naknak.server.user.domain.User;
@@ -33,6 +34,7 @@ public class UserService {
     private final InviteCodeRepository inviteCodeRepository;
     private final BlacklistRepository blacklistRepository;
     private final FollowRepository followRepository;
+    private final FollowService followService;
 
     @Transactional
     public LoginResponse login(String authCode) {
@@ -70,6 +72,10 @@ public class UserService {
         User user = User.create(kakaoId, kakaoUser.email(), nickname);
         userRepository.save(user);
         invite.use(user);
+
+        Long inviterId = invite.getCreatedBy().getId();
+        followService.follow(inviterId, user.getId());
+        followService.follow(user.getId(), inviterId);
 
         String newCode;
         do {

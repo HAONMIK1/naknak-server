@@ -2,6 +2,7 @@ package com.na.naknak.server.user.application;
 
 import com.na.naknak.server.common.exception.BusinessException;
 import com.na.naknak.server.common.security.JwtProvider;
+import com.na.naknak.server.follow.application.FollowService;
 import com.na.naknak.server.follow.domain.repository.FollowRepository;
 import com.na.naknak.server.user.domain.InviteCode;
 import com.na.naknak.server.user.domain.User;
@@ -20,6 +21,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import com.na.naknak.server.user.infrastructure.redis.BlacklistRepository;
 import com.na.naknak.server.user.presentation.dto.UserProfileResponse;
+import org.springframework.test.util.ReflectionTestUtils;
 import java.util.List;
 import java.util.Optional;
 
@@ -49,6 +51,8 @@ class UserServiceTest {
     private BlacklistRepository blacklistRepository;
     @Mock
     private FollowRepository followRepository;
+    @Mock
+    private FollowService followService;
 
     @Test
     void 기존_유저_로그인_AUTHENTICATED_반환() {
@@ -148,6 +152,35 @@ class UserServiceTest {
         // then
         assertThat(response.status()).isEqualTo("AUTHENTICATED");
         assertThat(response.accessToken()).isEqualTo("access-token");
+    }
+
+    @Test
+    void 회원가입시_초대자와_자동으로_상호_팔로우된다() {
+        // given
+        User inviter = User.create("0", "c@c.com", "초대자");
+        ReflectionTestUtils.setField(inviter, "id", 1L);
+        InviteCode invite = InviteCode.create("ABC12345", inviter);
+
+        given(kakaoApiClient.getUserInfo("kakao-token")).willReturn(
+                new KakaoUserInfo(12345L, new KakaoUserInfo.KakaoAccount("a@a.com",
+                        new KakaoUserInfo.KakaoProfile("신규닉네임")))
+        );
+        given(inviteCodeRepository.findByCodeAndUsedByIsNull("ABC12345")).willReturn(Optional.of(invite));
+        given(userRepository.existsByNickname("신규닉네임")).willReturn(false);
+        given(userRepository.save(any(User.class))).willAnswer(invocation -> {
+            User saved = invocation.getArgument(0);
+            ReflectionTestUtils.setField(saved, "id", 100L);
+            return saved;
+        });
+        given(jwtProvider.createAccessToken(any())).willReturn("access-token");
+        given(jwtProvider.createRefreshToken(any())).willReturn("refresh-token");
+
+        // when
+        userService.signup("kakao-token", "ABC12345", "신규닉네임");
+
+        // then
+        verify(followService).follow(1L, 100L);
+        verify(followService).follow(100L, 1L);
     }
 
     @Test
