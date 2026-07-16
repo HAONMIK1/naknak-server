@@ -34,7 +34,10 @@ public enum ErrorCode {
     S3_UPLOAD_ERROR(HttpStatus.BAD_GATEWAY, "사진 업로드 중 오류가 발생했습니다."),
 
     // Follow
-    SELF_FOLLOW_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "자기 자신을 팔로우할 수 없습니다.");
+    SELF_FOLLOW_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "자기 자신을 팔로우할 수 없습니다."),
+
+    // Score
+    INSUFFICIENT_POINT(HttpStatus.BAD_REQUEST, "포인트가 부족합니다.");
     private final HttpStatus status;
     private final String message;
 
