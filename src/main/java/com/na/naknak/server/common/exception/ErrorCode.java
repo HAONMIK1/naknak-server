@@ -37,7 +37,11 @@ public enum ErrorCode {
     SELF_FOLLOW_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "자기 자신을 팔로우할 수 없습니다."),
 
     // Score
-    INSUFFICIENT_POINT(HttpStatus.BAD_REQUEST, "포인트가 부족합니다.");
+    INSUFFICIENT_POINT(HttpStatus.BAD_REQUEST, "포인트가 부족합니다."),
+
+    // Raffle
+    RAFFLE_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 래플입니다."),
+    RAFFLE_CLOSED(HttpStatus.BAD_REQUEST, "이미 마감된 래플입니다.");
     private final HttpStatus status;
     private final String message;
 

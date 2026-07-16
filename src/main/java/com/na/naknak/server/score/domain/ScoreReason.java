@@ -10,7 +10,9 @@ public enum ScoreReason {
 
     REVIEW_CREATE(ScorePolicy.REVIEW_CREATE_SCORE, ScorePolicy.REVIEW_CREATE_POINT),
     REVIEW_PHOTO(ScorePolicy.REVIEW_PHOTO_SCORE, ScorePolicy.REVIEW_PHOTO_POINT),
-    INVITE(ScorePolicy.INVITE_SCORE, ScorePolicy.INVITE_POINT);
+    INVITE(ScorePolicy.INVITE_SCORE, ScorePolicy.INVITE_POINT),
+    // 차감 전용 사유 — spendPoints()에서만 쓰이므로 델타는 의미 없다(0으로 둔다).
+    RAFFLE_ENTRY(0, 0);
 
     private final int scoreDelta;
     private final int pointDelta;
