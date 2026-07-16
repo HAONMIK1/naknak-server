@@ -3,6 +3,7 @@ package com.na.naknak.server.follow.presentation;
 import com.na.naknak.server.common.ApiResponse;
 import com.na.naknak.server.common.auth.LoginUser;
 import com.na.naknak.server.follow.application.FollowService;
+import com.na.naknak.server.follow.presentation.dto.FollowUserResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -36,5 +37,15 @@ public class FollowController {
     @GetMapping("/api/v1/users/me/following")
     public ResponseEntity<ApiResponse<List<Long>>> getFollowingIds(@LoginUser Long currentUserId) {
         return ResponseEntity.ok(ApiResponse.ok(followService.getFollowingIds(currentUserId)));
+    }
+
+    @GetMapping("/api/v1/users/me/followers")
+    public ResponseEntity<ApiResponse<List<FollowUserResponse>>> getFollowers(@LoginUser Long currentUserId) {
+        return ResponseEntity.ok(ApiResponse.ok(followService.getFollowers(currentUserId)));
+    }
+
+    @GetMapping("/api/v1/users/me/following-users")
+    public ResponseEntity<ApiResponse<List<FollowUserResponse>>> getFollowingUsers(@LoginUser Long currentUserId) {
+        return ResponseEntity.ok(ApiResponse.ok(followService.getFollowingUsers(currentUserId)));
     }
 }

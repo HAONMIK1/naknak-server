@@ -4,6 +4,7 @@ import com.na.naknak.server.common.exception.BusinessException;
 import com.na.naknak.server.follow.domain.Follow;
 import com.na.naknak.server.follow.domain.repository.FollowRepository;
 import com.na.naknak.server.follow.infrastructure.redis.NetworkDegreeCache;
+import com.na.naknak.server.follow.presentation.dto.FollowUserResponse;
 import com.na.naknak.server.user.domain.User;
 import com.na.naknak.server.user.domain.repository.UserRepository;
 import org.junit.jupiter.api.Test;
@@ -115,5 +116,40 @@ class FollowServiceTest {
 
         // then
         assertThat(followingIds).containsExactly(2L, 3L);
+    }
+
+    @Test
+    void 팔로워_유저_목록_조회() {
+        // given
+        given(followRepository.findByFollowingId(1L)).willReturn(
+                List.of(Follow.create(2L, 1L), Follow.create(3L, 1L))
+        );
+        given(userRepository.findAllById(List.of(2L, 3L))).willReturn(
+                List.of(userWithId(2L), userWithId(3L))
+        );
+
+        // when
+        List<FollowUserResponse> followers = followService.getFollowers(1L);
+
+        // then
+        assertThat(followers).extracting(FollowUserResponse::id).containsExactly(2L, 3L);
+        assertThat(followers).extracting(FollowUserResponse::nickname).containsExactly("유저2", "유저3");
+    }
+
+    @Test
+    void 팔로잉_유저_목록_조회() {
+        // given
+        given(followRepository.findByFollowerId(1L)).willReturn(
+                List.of(Follow.create(1L, 2L), Follow.create(1L, 3L))
+        );
+        given(userRepository.findAllById(List.of(2L, 3L))).willReturn(
+                List.of(userWithId(2L), userWithId(3L))
+        );
+
+        // when
+        List<FollowUserResponse> followingUsers = followService.getFollowingUsers(1L);
+
+        // then
+        assertThat(followingUsers).extracting(FollowUserResponse::id).containsExactly(2L, 3L);
     }
 }
