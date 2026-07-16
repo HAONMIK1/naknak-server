@@ -190,7 +190,10 @@ class UserServiceTest {
     void 내_프로필_조회_성공() {
         // given
         User user = User.create("12345", "test@test.com", "테스트유저");
+        ReflectionTestUtils.setField(user, "id", 1L);
+        InviteCode activeCode = InviteCode.create("ACTIVE01", user);
         given(userRepository.findById(1L)).willReturn(Optional.of(user));
+        given(inviteCodeRepository.findByCreatedByAndUsedByIsNull(user)).willReturn(Optional.of(activeCode));
         given(followRepository.countByFollowingId(1L)).willReturn(3L);
         given(followRepository.countByFollowerId(1L)).willReturn(5L);
 
@@ -200,8 +203,26 @@ class UserServiceTest {
         // then
         assertThat(response.nickname()).isEqualTo("테스트유저");
         assertThat(response.email()).isEqualTo("test@test.com");
+        assertThat(response.inviteCode()).isEqualTo("ACTIVE01");
         assertThat(response.followerCount()).isEqualTo(3L);
         assertThat(response.followingCount()).isEqualTo(5L);
+    }
+
+    @Test
+    void 초대코드가_소진되면_프로필_조회_시_새로_발급된다() {
+        // given
+        User user = User.create("12345", "test@test.com", "테스트유저");
+        ReflectionTestUtils.setField(user, "id", 1L);
+        given(userRepository.findById(1L)).willReturn(Optional.of(user));
+        given(inviteCodeRepository.findByCreatedByAndUsedByIsNull(user)).willReturn(Optional.empty());
+        given(inviteCodeRepository.existsByCode(any())).willReturn(false);
+
+        // when
+        MyProfileResponse response = userService.getMyProfile(1L);
+
+        // then
+        assertThat(response.inviteCode()).isNotBlank();
+        verify(inviteCodeRepository).save(any(InviteCode.class));
     }
 
     @Test

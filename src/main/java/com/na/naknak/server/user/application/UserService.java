@@ -81,12 +81,7 @@ public class UserService {
         followService.follow(user.getId(), inviterId);
         scoreService.earn(inviterId, ScoreReason.INVITE);
 
-        String newCode;
-        do {
-            newCode = UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
-        } while (inviteCodeRepository.existsByCode(newCode));
-
-        inviteCodeRepository.save(InviteCode.create(newCode, user));
+        inviteCodeRepository.save(InviteCode.create(generateUniqueInviteCode(), user));
 
         String accessToken = jwtProvider.createAccessToken(user.getId());
         String refreshToken = jwtProvider.createRefreshToken(user.getId());
@@ -95,17 +90,34 @@ public class UserService {
         return LoginResponse.authenticated(accessToken, refreshToken);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public MyProfileResponse getMyProfile(Long userId) {
         User user = userRepository.findById(userId)
                 .filter(u -> !u.isDeleted())
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
-        String inviteCode = inviteCodeRepository.findByCreatedByAndUsedByIsNull(user)
-                .map(InviteCode::getCode)
-                .orElse(null);
+        String inviteCode = getOrCreateActiveInviteCode(user);
         long followerCount = followRepository.countByFollowingId(userId);
         long followingCount = followRepository.countByFollowerId(userId);
         return MyProfileResponse.from(user, inviteCode, followerCount, followingCount);
+    }
+
+    /** 미사용 초대코드가 있으면 그대로, 없으면(이미 다 써서 소진됐으면) 새로 발급한다. */
+    private String getOrCreateActiveInviteCode(User user) {
+        return inviteCodeRepository.findByCreatedByAndUsedByIsNull(user)
+                .map(InviteCode::getCode)
+                .orElseGet(() -> {
+                    String newCode = generateUniqueInviteCode();
+                    inviteCodeRepository.save(InviteCode.create(newCode, user));
+                    return newCode;
+                });
+    }
+
+    private String generateUniqueInviteCode() {
+        String code;
+        do {
+            code = UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
+        } while (inviteCodeRepository.existsByCode(code));
+        return code;
     }
 
     @Transactional(readOnly = true)
