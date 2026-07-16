@@ -104,32 +104,46 @@ public class NaverSearchClient {
         String title = stripTags(item.title());
         String address = item.address();
         String roadAddress = item.roadAddress();
+        Double lat = parseCoord(item.mapy());
+        Double lng = parseCoord(item.mapx());
         return new NaverPlaceResponse(
                 title,
                 item.category(),
                 address,
                 roadAddress,
-                parseCoord(item.mapy()),
-                parseCoord(item.mapx()),
-                buildPlaceUrl(item.link(), title, roadAddress != null && !roadAddress.isBlank() ? roadAddress : address)
+                lat,
+                lng,
+                buildPlaceUrl(item.link(), title, lat, lng, roadAddress != null && !roadAddress.isBlank() ? roadAddress : address)
         );
     }
 
     /**
      * 지역검색 API의 link 필드는 "네이버 플레이스 페이지"가 아니라 업체가 등록한 자체 홈페이지
      * URL이라 대부분 비어있거나 엉뚱한 곳을 가리킨다. place.naver.com/map.naver.com 링크가
-     * 아니면 신뢰하지 않고, 이름+주소로 네이버 지도 검색 URL을 대신 만들어 안내한다.
-     * (지역검색 API는 무료 범위에서 실제 플레이스 ID를 제공하지 않아 완벽한 딥링크는 불가능하다.)
+     * 아니면 신뢰하지 않는다. 이 경우 이름+주소로 만든 검색 URL은 동명이인/유사 상호가 있으면
+     * 엉뚱한 검색 결과 목록으로 빠질 수 있어서, 좌표(mapx/mapy)가 있으면 그 좌표에 정확히 핀을
+     * 꽂아주는 `map.naver.com/?lat=&lng=&title=` 형태를 우선 쓴다(비공식이지만 커뮤니티에서
+     * 검증된 형식 — 좌표 기반이라 텍스트 매칭 실패 위험이 없다). 좌표가 없을 때만 텍스트 검색으로
+     * 폴백한다. (지역검색 API는 무료 범위에서 실제 플레이스 ID를 제공하지 않아 완벽한 딥링크는
+     * 애초에 불가능한 구조적 한계 — place.naver.com 링크가 있을 때만 진짜 플레이스 페이지로 간다.)
      */
-    private String buildPlaceUrl(String link, String title, String address) {
+    private String buildPlaceUrl(String link, String title, Double lat, Double lng, String address) {
         if (link != null && (link.contains("place.naver.com") || link.contains("map.naver.com"))) {
             return link;
         }
+        if (lat != null && lng != null) {
+            return UriComponentsBuilder.fromUriString("https://map.naver.com/")
+                    .queryParam("lat", lat)
+                    .queryParam("lng", lng)
+                    .queryParam("title", title)
+                    .build()
+                    .encode()
+                    .toUriString();
+        }
         String query = address != null && !address.isBlank() ? title + " " + address : title;
         // URLEncoder는 form-urlencoded 규칙이라 공백을 '+'로 바꾸는데, URL 경로 세그먼트에서는
-        // '+'가 공백으로 해석되지 않아 검색어가 깨진다(예: "별미칭냉면+서울시..."를 그대로 검색해
-        // 정확한 업체를 못 찾고 주소 위치로만 이동함). 경로 세그먼트는 UriComponentsBuilder로
-        // 퍼센트 인코딩(공백 -> %20)해야 네이버 지도가 단일 업체를 정확히 찾아 place 상세로 이동한다.
+        // '+'가 공백으로 해석되지 않아 검색어가 깨진다. 경로 세그먼트는 UriComponentsBuilder로
+        // 퍼센트 인코딩(공백 -> %20)해야 한다.
         return UriComponentsBuilder.fromUriString("https://map.naver.com/p/search/{query}")
                 .buildAndExpand(query)
                 .encode()
