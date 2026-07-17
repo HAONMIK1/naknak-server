@@ -208,3 +208,35 @@ sequenceDiagram
   없으니 자동 1등 — 신규 유저를 위축시키지 않기 위함).
 - `/ranking/local`은 `region`이 비어있으면 `INVALID_INPUT` 에러. 해당 지역에 리뷰가 없는 유저는
   `myRank`가 `null`(아직 순위가 없다는 뜻, 0등이 아님)로 내려온다.
+
+## 점수 적립 비동기화 (SQS producer/consumer)
+
+기존에는 `ReviewService.create()`/`UserService.signup()`(초대 적립)이 `ScoreService.earn()`을
+**직접, 동기로** 호출했다 — 리뷰 저장 트랜잭션 하나 안에서 점수/포인트 UPDATE + 원장 INSERT 2건 +
+Redis ZSET 갱신까지 다 처리한다. 트래픽이 커지면 이게 리뷰 작성 API 응답 지연으로 이어진다
+(docs/scaling.md 3단계). 그래서 "점수를 적립해야 한다"는 사실만 큐에 던지고(producer), 실제
+적립 처리는 별도 컨슈머가 큐를 읽어서 수행하도록 분리한다.
+
+### 설계
+
+- `ScoreEarnEvent(Long userId, ScoreReason reason, Long reviewId)` — 큐에 실어 보낼 이벤트. JSON
+  직렬화.
+- `ScoreEarnPublisher` 인터페이스 — `publish(ScoreEarnEvent)` 하나만 정의. 구현체 2개:
+  - `SqsScoreEarnPublisher`: `aws.sqs.score-earn-queue-url` 프로퍼티가 설정된 환경(운영)에서만
+    빈으로 등록(`@ConditionalOnProperty`). 실제 SQS `SendMessage`.
+  - `SyncScoreEarnPublisher`: 그 프로퍼티가 없는 환경(로컬/테스트)의 기본값. 큐 없이
+    `ScoreService.earn()`을 그 자리에서 바로 호출 — **로컬에 SQS를 못 띄우는 상황(LocalStack
+    미설치 등)에서도 기존과 동일하게 개발/테스트가 가능해야 하기 때문**. 두 구현이 같은
+    인터페이스라 호출부(`ReviewService`, `UserService`)는 운영/로컬을 구분하지 않는다.
+- `ScoreEarnConsumer` — `@Scheduled(fixedDelay=...)`로 SQS를 롱폴링(`waitTimeSeconds=20`)하며
+  메시지를 받아 `ScoreService.earn()`을 호출하고, 성공하면 메시지를 삭제(ack)한다. 이 컨슈머도
+  큐 URL이 설정된 환경에서만 활성화된다. 실패 시 메시지를 삭제하지 않으면 SQS visibility timeout
+  이후 자동으로 다시 보이므로(재시도), 별도 재시도 로직을 앱에서 구현하지 않는다. 여러 번
+  재시도해도 계속 실패하면 DLQ(Dead Letter Queue)로 이동한다.
+- **멱등성은 고려하지 않는다** — 지금 단계에서는 큐 메시지가 최소 1회(at-least-once) 전달되면
+  충분하고, 중복 적립 가능성(드묾)은 감수한다. 완벽한 멱등 처리(이벤트 ID 기반 중복 제거)는
+  실제로 중복이 관측되면 그때 추가한다.
+- Terraform(`infra/sqs.tf`)으로 큐 + DLQ를 준비해뒀지만 **`terraform apply`는 아직 실행하지
+  않았다** — 실제 AWS 리소스 생성/과금은 별도 승인 후 진행한다. 그 전까지는 `aws.sqs.score-earn-queue-url`
+  프로퍼티가 어떤 환경에도 설정되지 않으므로 `SyncScoreEarnPublisher`(기존과 동일한 동기 동작)만
+  동작한다 — 코드는 미리 준비되어 있지만 실제로 큐를 타는 건 인프라가 만들어진 뒤부터다.
