@@ -13,8 +13,11 @@ resource "aws_secretsmanager_secret_version" "app" {
     SPRING_DATASOURCE_URL      = "jdbc:postgresql://${aws_db_instance.main.address}:5432/naknak"
     SPRING_DATASOURCE_USERNAME = "naknak"
     SPRING_DATASOURCE_PASSWORD = random_password.db.result
-    SPRING_DATA_REDIS_HOST     = aws_elasticache_cluster.redis.cache_nodes[0].address
-    SPRING_DATA_REDIS_PORT     = "6379"
+    # 클러스터 모드 엔드포인트 하나만 주면 redisson-spring-boot-starter가 나머지 샤드를
+    # 자동으로 찾는다(spring.data.redis.cluster.nodes). ⚠️ 이 값이 바뀌는 시점에 앱도
+    # application.yml에서 host/port 대신 cluster.nodes를 읽도록 같이 배포해야 한다
+    # (infra/redis.tf 상단 주석 참고) — 아직 이 배포는 하지 않았다.
+    SPRING_DATA_REDIS_CLUSTER_NODES = aws_elasticache_replication_group.redis.configuration_endpoint_address
     SPRING_PROFILES_ACTIVE     = "prod"
     JWT_SECRET                 = var.jwt_secret
     KAKAO_CLIENT_ID            = var.kakao_client_id
