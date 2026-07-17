@@ -159,3 +159,52 @@ sequenceDiagram
 - `PointsPage.tsx`(현재 "준비 중" 플레이스홀더)를 지갑 화면으로 교체 — 점수/포인트, 적립 내역.
 - 신규 `RankingPage.tsx` — 리더보드, 아바타는 기존 `avatarColor.ts` 재사용.
 - (2단계 이후 과제, 이번 범위 아님) 복권 응모 화면, 포인트 차감 API, 광고 시청 API.
+
+## 랭킹 확장: 스코프(GLOBAL/NETWORK/LOCAL) + Redis
+
+전체 랭킹 하나만으로는 "낯선 사람과 순위 경쟁"이 돼버려 지인 기반 신뢰 플랫폼 정체성과 맞지 않는다.
+기존 전체 랭킹은 유지하되, 두 가지를 더한다.
+
+- **GLOBAL**(기존): 전체 유저 대상 `total_score` 랭킹.
+- **NETWORK**(신규): 내 1~3촌(팔로우 네트워크)끼리만 겨루는 랭킹. "모르는 사람들 사이에서 128등"보다
+  "내가 아는 사람들 사이에서 3등"이 이 앱의 핵심 가치(지인 기반 신뢰)에 맞다. [follow.md](follow.md)의
+  `FollowRepository.findNetworkDegrees`(재귀 CTE, 이미 존재)를 그대로 재사용한다 — 촌수 계산 로직을
+  중복 구현하지 않는다.
+- **LOCAL**(신규, "동네 맛집 마스터"): 특정 지역(`region` 쿼리 파라미터, 예: "강남구")에서 리뷰를 많이
+  남긴 사람 랭킹. 활동량이 아니라 "이 동네는 이 사람 말을 믿어도 된다"는 전문성 포지셔닝이라 신뢰
+  기반 브랜딩에 맞는다. `restaurants.address`에 지역 문자열이 포함된 맛집에 남긴 리뷰 수로 집계한다
+  (region 컬럼을 새로 만들지 않고 기존 address 텍스트를 `LIKE` 매칭 — 행정구역 테이블 정규화는
+  지금 규모에서 과설계라 하지 않는다).
+
+### GLOBAL 랭킹에만 Redis(ZSET)를 적용하는 이유
+
+기존 GLOBAL 랭킹은 요청마다 `ORDER BY total_score DESC LIMIT 50` + `COUNT(*) WHERE total_score > ?`
+쿼리를 라이브로 날렸다(Redis 미적용, 지금까지 확인된 사실). 트래픽이 커지면 이 두 쿼리가 랭킹 조회마다
+반복 실행되는 게 가장 먼저 병목이 된다 — GLOBAL은 **모든 유저가 같은 결과를 보는** 조회라 캐시 효율이
+가장 높다.
+
+- `score/infrastructure/redis/GlobalRankingCache`: Redisson `RScoredSortedSet`(ZSET) 하나로
+  전체 랭킹을 상시 유지한다. `ScoreService.earn()`/`spendPoints`가 아니라 **점수(score)가 바뀔 때만**
+  `addScore(userId, delta)`(ZINCRBY)로 갱신한다 — 매 요청마다 재계산하지 않고 쓰기 시점에 증분 반영.
+- 상위 N명 조회는 `ZREVRANGE`(O(log n + N)), 내 순위는 `ZREVRANK`(O(log n)) — 기존의 `COUNT(*)` 풀스캔
+  성격 쿼리를 완전히 대체한다.
+- **콜드스타트**: Redis가 비어있으면(운영 중 캐시 flush 등) `NetworkDegreeCache`와 동일한 패턴으로
+  sentinel 키(`RANK:GLOBAL:seeded`, TTL 없음)를 두고, 없을 때 DB에서 1회 backfill 후 sentinel을 세운다.
+  그 이후로는 `earn()`의 증분 갱신만으로 정합성을 유지한다(주기적 재계산 배치는 없음 — ZINCRBY가
+  누적 카운터의 delta와 항상 일치하므로 드리프트가 생기지 않는다).
+- **NETWORK/LOCAL은 Redis를 적용하지 않는다**: 둘 다 "전체가 아니라 나 한정으로 스코프된" 조회라
+  캐시 히트율이 낮고(유저마다 결과가 다름), 대상 집합 자체가 작다(NETWORK는 최대 수백 명, LOCAL은
+  특정 지역 리뷰어로 이미 좁혀짐) — 이 규모에서 별도 캐시 레이어를 두는 건 과설계. 인덱스 기반 라이브
+  쿼리로 충분하다.
+
+### API
+
+| Method | Path | 설명 | 인증 |
+|---|---|---|---|
+| GET | /api/v1/ranking?scope=GLOBAL\|NETWORK (기본 GLOBAL) | 스코프별 점수 랭킹 | 필요 |
+| GET | /api/v1/ranking/local?region= | 지역 리뷰 수 랭킹("동네 맛집 마스터") | 필요 |
+
+- `scope=NETWORK`일 때 내 네트워크가 비어있으면(1촌도 없음) 빈 목록 + `myRank=1`을 반환한다(경쟁 상대가
+  없으니 자동 1등 — 신규 유저를 위축시키지 않기 위함).
+- `/ranking/local`은 `region`이 비어있으면 `INVALID_INPUT` 에러. 해당 지역에 리뷰가 없는 유저는
+  `myRank`가 `null`(아직 순위가 없다는 뜻, 0등이 아님)로 내려온다.
