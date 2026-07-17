@@ -4,7 +4,7 @@ import com.na.naknak.server.common.exception.BusinessException;
 import com.na.naknak.server.common.security.JwtProvider;
 import com.na.naknak.server.follow.application.FollowService;
 import com.na.naknak.server.follow.domain.repository.FollowRepository;
-import com.na.naknak.server.score.application.ScoreService;
+import com.na.naknak.server.score.application.ScoreEarnPublisher;
 import com.na.naknak.server.user.domain.InviteCode;
 import com.na.naknak.server.user.domain.User;
 import com.na.naknak.server.user.domain.repository.InviteCodeRepository;
@@ -55,7 +55,7 @@ class UserServiceTest {
     @Mock
     private FollowService followService;
     @Mock
-    private ScoreService scoreService;
+    private ScoreEarnPublisher scoreEarnPublisher;
 
     @Test
     void 기존_유저_로그인_AUTHENTICATED_반환() {

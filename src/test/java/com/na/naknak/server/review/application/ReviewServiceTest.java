@@ -7,7 +7,7 @@ import com.na.naknak.server.review.domain.Review;
 import com.na.naknak.server.review.domain.repository.ReviewRepository;
 import com.na.naknak.server.review.presentation.dto.ReviewCreateRequest;
 import com.na.naknak.server.review.presentation.dto.ReviewResponse;
-import com.na.naknak.server.score.application.ScoreService;
+import com.na.naknak.server.score.application.ScoreEarnPublisher;
 import com.na.naknak.server.user.domain.User;
 import com.na.naknak.server.user.domain.repository.UserRepository;
 import org.junit.jupiter.api.Test;
@@ -38,7 +38,7 @@ class ReviewServiceTest {
     @Mock
     private RestaurantRepository restaurantRepository;
     @Mock
-    private ScoreService scoreService;
+    private ScoreEarnPublisher scoreEarnPublisher;
 
     private User userWithId(Long id) {
         User user = User.create(String.valueOf(id), "u" + id + "@test.com", "유저" + id);

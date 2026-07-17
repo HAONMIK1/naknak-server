@@ -8,7 +8,8 @@ import com.na.naknak.server.review.domain.Review;
 import com.na.naknak.server.review.domain.repository.ReviewRepository;
 import com.na.naknak.server.review.presentation.dto.ReviewCreateRequest;
 import com.na.naknak.server.review.presentation.dto.ReviewResponse;
-import com.na.naknak.server.score.application.ScoreService;
+import com.na.naknak.server.score.application.ScoreEarnEvent;
+import com.na.naknak.server.score.application.ScoreEarnPublisher;
 import com.na.naknak.server.score.domain.ScoreReason;
 import com.na.naknak.server.user.domain.User;
 import com.na.naknak.server.user.domain.repository.UserRepository;
@@ -27,7 +28,7 @@ public class ReviewService {
     private final ReviewRepository reviewRepository;
     private final UserRepository userRepository;
     private final RestaurantRepository restaurantRepository;
-    private final ScoreService scoreService;
+    private final ScoreEarnPublisher scoreEarnPublisher;
 
     @Transactional
     public ReviewResponse create(Long userId, Long restaurantId, ReviewCreateRequest request) {
@@ -47,9 +48,9 @@ public class ReviewService {
 
         reviewRepository.save(review);
 
-        scoreService.earn(userId, ScoreReason.REVIEW_CREATE, review.getId());
+        scoreEarnPublisher.publish(new ScoreEarnEvent(userId, ScoreReason.REVIEW_CREATE, review.getId()));
         if (imageUrls != null && !imageUrls.isEmpty()) {
-            scoreService.earn(userId, ScoreReason.REVIEW_PHOTO, review.getId());
+            scoreEarnPublisher.publish(new ScoreEarnEvent(userId, ScoreReason.REVIEW_PHOTO, review.getId()));
         }
 
         return ReviewResponse.from(review);

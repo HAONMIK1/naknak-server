@@ -27,6 +27,11 @@ aws:
   s3:
     bucket: ${AWS_S3_BUCKET:naknak-uploads-139214070114}
     region: ap-northeast-2
+  sqs:
+    region: ap-northeast-2
+    # score-earn-queue-url은 여기서 기본값을 두지 않는다 — 빈 문자열도 "설정됨"으로 인식돼
+    # SqsScoreEarnPublisher/ScoreEarnConsumer가 활성화되어 버린다. 큐가 실제로 만들어진 뒤
+    # AWS_SQS_SCORE_EARN_QUEUE_URL 환경변수를 설정해야만 활성화되게, 여기서는 키 자체를 비워둔다.
 
 cdn:
   domain: ${CDN_DOMAIN:https://d3vx56q9cwsix.cloudfront.net}

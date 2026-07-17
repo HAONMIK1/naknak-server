@@ -5,7 +5,8 @@ import com.na.naknak.server.common.exception.ErrorCode;
 import com.na.naknak.server.common.security.JwtProvider;
 import com.na.naknak.server.follow.application.FollowService;
 import com.na.naknak.server.follow.domain.repository.FollowRepository;
-import com.na.naknak.server.score.application.ScoreService;
+import com.na.naknak.server.score.application.ScoreEarnEvent;
+import com.na.naknak.server.score.application.ScoreEarnPublisher;
 import com.na.naknak.server.score.domain.ScoreReason;
 import com.na.naknak.server.user.domain.InviteCode;
 import com.na.naknak.server.user.domain.User;
@@ -37,7 +38,7 @@ public class UserService {
     private final BlacklistRepository blacklistRepository;
     private final FollowRepository followRepository;
     private final FollowService followService;
-    private final ScoreService scoreService;
+    private final ScoreEarnPublisher scoreEarnPublisher;
 
     @Transactional
     public LoginResponse login(String authCode) {
@@ -79,7 +80,7 @@ public class UserService {
         Long inviterId = invite.getCreatedBy().getId();
         followService.follow(inviterId, user.getId());
         followService.follow(user.getId(), inviterId);
-        scoreService.earn(inviterId, ScoreReason.INVITE);
+        scoreEarnPublisher.publish(new ScoreEarnEvent(inviterId, ScoreReason.INVITE, null));
 
         inviteCodeRepository.save(InviteCode.create(generateUniqueInviteCode(), user));
 
