@@ -1,12 +1,17 @@
 package com.na.naknak.server.score.application;
 
 import com.na.naknak.server.common.exception.BusinessException;
+import com.na.naknak.server.follow.domain.repository.FollowRepository;
+import com.na.naknak.server.review.domain.repository.ReviewRepository;
+import com.na.naknak.server.score.domain.RankingScope;
 import com.na.naknak.server.score.domain.ScoreReason;
 import com.na.naknak.server.score.domain.ScoreTarget;
 import com.na.naknak.server.score.domain.UserScore;
 import com.na.naknak.server.score.domain.UserScoreHistory;
 import com.na.naknak.server.score.domain.repository.UserScoreHistoryRepository;
 import com.na.naknak.server.score.domain.repository.UserScoreRepository;
+import com.na.naknak.server.score.infrastructure.redis.GlobalRankingCache;
+import com.na.naknak.server.score.presentation.dto.LocalRankingResponse;
 import com.na.naknak.server.score.presentation.dto.RankingResponse;
 import com.na.naknak.server.score.presentation.dto.WalletResponse;
 import com.na.naknak.server.user.domain.User;
@@ -17,15 +22,18 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Pageable;
+import org.redisson.client.protocol.ScoredEntry;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -42,6 +50,12 @@ class ScoreServiceTest {
     private UserScoreHistoryRepository userScoreHistoryRepository;
     @Mock
     private UserRepository userRepository;
+    @Mock
+    private FollowRepository followRepository;
+    @Mock
+    private ReviewRepository reviewRepository;
+    @Mock
+    private GlobalRankingCache globalRankingCache;
 
     private UserScore userScoreWithId(Long userId, int totalScore, int pointBalance) {
         UserScore userScore = UserScore.create(userId);
@@ -54,6 +68,30 @@ class ScoreServiceTest {
         User user = User.create(String.valueOf(id), "u" + id + "@test.com", nickname);
         ReflectionTestUtils.setField(user, "id", id);
         return user;
+    }
+
+    private FollowRepository.NetworkDegreeRow networkRow(Long userId, int degree) {
+        return new FollowRepository.NetworkDegreeRow() {
+            public Long getUserId() {
+                return userId;
+            }
+
+            public Integer getDegree() {
+                return degree;
+            }
+        };
+    }
+
+    private ReviewRepository.RegionReviewCountRow regionRow(Long userId, long count) {
+        return new ReviewRepository.RegionReviewCountRow() {
+            public Long getUserId() {
+                return userId;
+            }
+
+            public Long getReviewCount() {
+                return count;
+            }
+        };
     }
 
     @Test
@@ -76,6 +114,8 @@ class ScoreServiceTest {
         assertThat(historyCaptor.getAllValues())
                 .extracting(UserScoreHistory::getTarget)
                 .containsExactlyInAnyOrder(ScoreTarget.SCORE, ScoreTarget.POINT);
+
+        verify(globalRankingCache).addScore(1L, 10);
     }
 
     @Test
@@ -90,6 +130,7 @@ class ScoreServiceTest {
         // then
         assertThat(existing.getTotalScore()).isEqualTo(105);
         assertThat(existing.getPointBalance()).isEqualTo(55);
+        verify(globalRankingCache).addScore(1L, 5);
     }
 
     @Test
@@ -145,22 +186,19 @@ class ScoreServiceTest {
     }
 
     @Test
-    void 랭킹_조회_상위목록_안에_있으면_그_순위를_쓴다() {
+    void GLOBAL_랭킹_조회_상위목록_안에_있으면_그_순위를_쓴다() {
         // given
-        List<UserScore> top = List.of(
-                userScoreWithId(2L, 300, 0),
-                userScoreWithId(1L, 200, 0),
-                userScoreWithId(3L, 100, 0)
-        );
-        given(userScoreRepository.findByOrderByTotalScoreDesc(any(Pageable.class))).willReturn(top);
+        given(globalRankingCache.isSeeded()).willReturn(true);
+        given(globalRankingCache.getTop(anyInt())).willReturn(List.of(
+                new ScoredEntry<>(300.0, 2L), new ScoredEntry<>(200.0, 1L), new ScoredEntry<>(100.0, 3L)
+        ));
         given(userRepository.findAllById(any())).willReturn(List.of(
                 userWithId(2L, "1등유저"), userWithId(1L, "나"), userWithId(3L, "3등유저")
         ));
-        given(userScoreRepository.findByUserId(1L)).willReturn(Optional.of(userScoreWithId(1L, 200, 0)));
-        given(userScoreRepository.countByTotalScoreGreaterThan(200)).willReturn(1L);
+        given(globalRankingCache.getRank(1L)).willReturn(Optional.of(1));
 
         // when
-        RankingResponse ranking = scoreService.getRanking(1L);
+        RankingResponse ranking = scoreService.getRanking(1L, RankingScope.GLOBAL);
 
         // then
         assertThat(ranking.topEntries()).hasSize(3);
@@ -170,16 +208,105 @@ class ScoreServiceTest {
     }
 
     @Test
-    void 랭킹_조회_상위목록_밖이면_별도로_순위를_계산한다() {
+    void GLOBAL_랭킹_조회_상위목록_밖이면_별도로_순위를_계산한다() {
         // given
-        given(userScoreRepository.findByOrderByTotalScoreDesc(any(Pageable.class))).willReturn(List.of());
+        given(globalRankingCache.isSeeded()).willReturn(true);
+        given(globalRankingCache.getTop(anyInt())).willReturn(List.of());
+        given(globalRankingCache.getRank(1L)).willReturn(Optional.empty());
         given(userScoreRepository.findByUserId(1L)).willReturn(Optional.of(userScoreWithId(1L, 5, 0)));
         given(userScoreRepository.countByTotalScoreGreaterThan(5)).willReturn(127L);
 
         // when
-        RankingResponse ranking = scoreService.getRanking(1L);
+        RankingResponse ranking = scoreService.getRanking(1L, RankingScope.GLOBAL);
 
         // then
         assertThat(ranking.myRank()).isEqualTo(128);
+    }
+
+    @Test
+    void GLOBAL_랭킹_콜드스타트면_DB에서_1회_backfill한다() {
+        // given
+        given(globalRankingCache.isSeeded()).willReturn(false);
+        given(userScoreRepository.findAllByOrderByTotalScoreDesc()).willReturn(List.of(userScoreWithId(1L, 10, 0)));
+        given(globalRankingCache.getTop(anyInt())).willReturn(List.of());
+        given(globalRankingCache.getRank(1L)).willReturn(Optional.of(0));
+
+        // when
+        scoreService.getRanking(1L, RankingScope.GLOBAL);
+
+        // then
+        verify(globalRankingCache).backfill(eq(Map.of(1L, 10)));
+    }
+
+    @Test
+    void NETWORK_랭킹은_내_촌수_안에서만_순위를_매긴다() {
+        // given
+        given(followRepository.findNetworkDegrees(eq(1L), anyInt(), anyInt())).willReturn(List.of(
+                networkRow(2L, 1), networkRow(3L, 2)
+        ));
+        given(userScoreRepository.findByUserIdIn(any())).willReturn(List.of(
+                userScoreWithId(1L, 50, 0), userScoreWithId(2L, 200, 0), userScoreWithId(3L, 10, 0)
+        ));
+        given(userRepository.findAllById(any())).willReturn(List.of(
+                userWithId(1L, "나"), userWithId(2L, "1촌"), userWithId(3L, "2촌")
+        ));
+        given(userScoreRepository.findByUserId(1L)).willReturn(Optional.of(userScoreWithId(1L, 50, 0)));
+
+        // when
+        RankingResponse ranking = scoreService.getRanking(1L, RankingScope.NETWORK);
+
+        // then — 전체 GLOBAL 데이터와 무관하게 네트워크(2L,3L,나) 안에서만 순위가 매겨진다
+        assertThat(ranking.topEntries()).hasSize(3);
+        assertThat(ranking.topEntries().get(0).userId()).isEqualTo(2L);
+        assertThat(ranking.myRank()).isEqualTo(2);
+    }
+
+    @Test
+    void NETWORK_랭킹은_네트워크가_비어있으면_자동_1등() {
+        // given
+        given(followRepository.findNetworkDegrees(eq(1L), anyInt(), anyInt())).willReturn(List.of());
+
+        // when
+        RankingResponse ranking = scoreService.getRanking(1L, RankingScope.NETWORK);
+
+        // then
+        assertThat(ranking.topEntries()).isEmpty();
+        assertThat(ranking.myRank()).isEqualTo(1);
+    }
+
+    @Test
+    void LOCAL_랭킹은_지역_리뷰수로_매겨지고_리뷰없으면_myRank가_null() {
+        // given
+        given(reviewRepository.countReviewsByRegion(eq("강남구"), anyInt())).willReturn(List.of(
+                regionRow(2L, 5L), regionRow(3L, 2L)
+        ));
+        given(userRepository.findAllById(any())).willReturn(List.of(
+                userWithId(2L, "동네고수"), userWithId(3L, "3등")
+        ));
+        given(reviewRepository.countMyReviewsByRegion(1L, "강남구")).willReturn(0L);
+
+        // when
+        LocalRankingResponse ranking = scoreService.getLocalRanking(1L, "강남구");
+
+        // then
+        assertThat(ranking.topEntries()).hasSize(2);
+        assertThat(ranking.topEntries().get(0).nickname()).isEqualTo("동네고수");
+        assertThat(ranking.myReviewCount()).isEqualTo(0);
+        assertThat(ranking.myRank()).isNull();
+    }
+
+    @Test
+    void LOCAL_랭킹은_내_리뷰가_있으면_내_순위를_계산한다() {
+        // given
+        given(reviewRepository.countReviewsByRegion(eq("강남구"), anyInt())).willReturn(List.of());
+        given(reviewRepository.countMyReviewsByRegion(1L, "강남구")).willReturn(3L);
+        given(reviewRepository.countUsersAheadInRegion("강남구", 3L)).willReturn(4L);
+
+        // when
+        LocalRankingResponse ranking = scoreService.getLocalRanking(1L, "강남구");
+
+        // then
+        assertThat(ranking.myReviewCount()).isEqualTo(3);
+        assertThat(ranking.myRank()).isEqualTo(5);
     }
 }

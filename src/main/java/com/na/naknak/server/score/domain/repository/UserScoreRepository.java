@@ -4,6 +4,7 @@ import com.na.naknak.server.score.domain.UserScore;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -16,4 +17,8 @@ public interface UserScoreRepository extends JpaRepository<UserScore, Long> {
     List<UserScore> findByOrderByTotalScoreDesc(Pageable pageable);
 
     long countByTotalScoreGreaterThan(int totalScore);
+
+    List<UserScore> findByUserIdIn(Collection<Long> userIds);
+
+    List<UserScore> findAllByOrderByTotalScoreDesc();
 }
