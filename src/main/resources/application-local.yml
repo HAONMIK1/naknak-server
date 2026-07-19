@@ -22,3 +22,7 @@ jwt:
 kakao:
   client-id: local-kakao-client-id
   client-secret: local-kakao-client-secret
+
+naver:
+  client-id: zIZg0h0xEIGptXb1G2FI
+  client-secret: dylfq7Ug2V

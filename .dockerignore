@@ -1,0 +1,7 @@
+build
+.gradle
+.git
+.idea
+*.iml
+docs
+src/test

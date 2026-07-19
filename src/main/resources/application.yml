@@ -1,8 +1,11 @@
+server:
+  port: ${PORT:8080}
+
 spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/naknak
     username: naknak
-    password: naknak
+    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -15,12 +18,34 @@ spring:
     redis:
       host: localhost
       port: 6379
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 50MB
+
+aws:
+  s3:
+    bucket: ${AWS_S3_BUCKET:naknak-uploads-139214070114}
+    region: ap-northeast-2
+  sqs:
+    region: ap-northeast-2
+    # score-earn-queue-url은 여기서 기본값을 두지 않는다 — 빈 문자열도 "설정됨"으로 인식돼
+    # SqsScoreEarnPublisher/ScoreEarnConsumer가 활성화되어 버린다. 큐가 실제로 만들어진 뒤
+    # AWS_SQS_SCORE_EARN_QUEUE_URL 환경변수를 설정해야만 활성화되게, 여기서는 키 자체를 비워둔다.
+
+cdn:
+  domain: ${CDN_DOMAIN:https://d3vx56q9cwsix.cloudfront.net}
 
 jwt:
-  secret: local-dev-secret-key-must-be-at-least-256-bits-long-so-add-more-text
+  secret: ${JWT_SECRET}
   access-token-expiry: 900
   refresh-token-expiry: 1209600
 
 kakao:
-  client-id: local-kakao-client-id
-  client-secret: local-kakao-client-secret
+  client-id: ${KAKAO_CLIENT_ID}
+  client-secret: ${KAKAO_CLIENT_SECRET}
+  redirect-uri: ${KAKAO_REDIRECT_URI}
+
+naver:
+  client-id: ${NAVER_CLIENT_ID}
+  client-secret: ${NAVER_CLIENT_SECRET}
