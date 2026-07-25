@@ -1,0 +1,9 @@
+# 로컬 provider 캐시
+.terraform/
+# 상태 파일 (혹시 로컬에 생겨도 커밋 금지)
+*.tfstate
+*.tfstate.*
+# 실제 비밀값 (절대 커밋 금지)
+terraform.tfvars
+*.auto.tfvars
+crash.log

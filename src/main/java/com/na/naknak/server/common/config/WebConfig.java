@@ -1,7 +1,7 @@
 package com.na.naknak.server.common.config;
 
 import com.na.naknak.server.common.auth.LoginUserArgumentResolver;
-import com.na.naknak.server.common.logging.TraceIdInterceptor;
+import com.na.naknak.server.common.config.logging.TraceIdInterceptor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;

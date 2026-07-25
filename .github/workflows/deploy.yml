@@ -1,0 +1,61 @@
+name: CI/CD Deploy
+
+on:
+  push:
+    branches: [ infra/aws ]
+  workflow_dispatch:
+
+env:
+  AWS_REGION: ap-northeast-2
+  ECR: 139214070114.dkr.ecr.ap-northeast-2.amazonaws.com/naknak-server
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Run tests
+        run: |
+          chmod +x gradlew
+          ./gradlew test
+
+  build-and-deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write   # OIDC 인증용
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push image
+        run: |
+          docker build --platform linux/amd64 -t $ECR:latest -t $ECR:${{ github.sha }} .
+          docker push $ECR:latest
+          docker push $ECR:${{ github.sha }}
+
+      - name: Deploy to EC2 over SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            aws ecr get-login-password --region ap-northeast-2 | sudo docker login --username AWS --password-stdin 139214070114.dkr.ecr.ap-northeast-2.amazonaws.com
+            sudo docker pull 139214070114.dkr.ecr.ap-northeast-2.amazonaws.com/naknak-server:latest
+            sudo docker rm -f naknak || true
+            sudo docker run -d --name naknak --restart always -p 8080:8080 --env-file /opt/naknak.env 139214070114.dkr.ecr.ap-northeast-2.amazonaws.com/naknak-server:latest
+            sudo docker image prune -f

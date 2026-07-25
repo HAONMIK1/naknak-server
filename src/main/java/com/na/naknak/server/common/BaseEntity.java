@@ -1,26 +1,17 @@
 package com.na.naknak.server.common;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.EntityListeners;
 import jakarta.persistence.MappedSuperclass;
 import lombok.Getter;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 
+/**
+ * 생성/수정 시각 + 소프트 딜리트(deleted_at)를 갖는 감사 상위 클래스.
+ * deleted_at 컬럼이 있는 테이블(users, reviews 등)이 상속한다.
+ */
 @Getter
 @MappedSuperclass
-@EntityListeners(AuditingEntityListener.class)
-public abstract class BaseEntity {
-
-    @CreatedDate
-    @Column(updatable = false)
-    private LocalDateTime createdAt;
-
-    @LastModifiedDate
-    private LocalDateTime updatedAt;
+public abstract class BaseEntity extends BaseTimeEntity {
 
     private LocalDateTime deletedAt;
 
